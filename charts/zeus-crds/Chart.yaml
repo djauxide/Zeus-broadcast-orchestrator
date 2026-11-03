@@ -1,0 +1,7 @@
+
+apiVersion: v2
+name: zeus-crds
+description: Zeus CRDs (versioned independently)
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

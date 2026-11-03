@@ -1,0 +1,35 @@
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: zeus-provider-validate
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: zeus-provider-validate
+spec:
+  selector:
+    matchLabels:
+      app: zeus-provider-validate
+  template:
+    metadata:
+      labels:
+        app: zeus-provider-validate
+    spec:
+      hostNetwork: true
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: validate
+          image: "{{ .Values.image.repository }}-provider-validate:{{ .Values.image.tag }}"
+          env:
+            - name: REQUIRED_PROVIDER
+              value: {{ .Values.mxl.defaultProvider | quote }}
+          securityContext:
+            capabilities:
+              add: ["IPC_LOCK"]
+          volumeMounts:
+            - { name: dev-infiniband, mountPath: /dev/infiniband, readOnly: true }
+            - { name: mxl-domain, mountPath: /run/mxl/domain }
+      volumes:
+        - { name: dev-infiniband, hostPath: { path: /dev/infiniband, type: DirectoryOrCreate } }
+        - { name: mxl-domain, hostPath: { path: /run/mxl/domain, type: DirectoryOrCreate } }

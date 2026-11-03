@@ -1,0 +1,38 @@
+
+apiVersion: core.zeus.broadcast/v1alpha1
+kind: ZeusRunbook
+metadata:
+  name: tier-one-dual-path
+  namespace: default
+spec:
+  eventClass: tier-one-football
+  naps:
+    - name: vision-mixer-1
+      nap: vision-mixer-1
+  ingress:
+    contribution:
+      redundancy: hitless
+      mergeMode: hitless
+      paths:
+        - name: srt-primary
+          transport: srt
+          priority: 1
+          srt:
+            mode: rendezvous
+            remoteHost: 198.51.100.20
+            remotePort: 9000
+            latencyMs: 80
+            pbKeyLen: 32
+            passphraseSecretRef:
+              name: srt-tier1-pass
+              key: passphrase
+        - name: rist-backup
+          transport: rist
+          priority: 2
+          rist:
+            profile: 1
+            remoteHost: 198.51.100.21
+            remotePort: 9100
+            passphraseSecretRef:
+              name: rist-tier1-pass
+              key: passphrase

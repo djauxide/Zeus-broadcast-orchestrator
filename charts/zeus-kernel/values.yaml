@@ -1,0 +1,40 @@
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/zeus-broadcast/zeus-kernel
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app: zeus-kernel
+
+nmos:
+  registryURL: ""
+  authz:
+    enabled: false
+    tokenURL: ""
+    clientID: ""
+    clientSecretRef:
+      name: ""
+      key: ""
+
+mxl:
+  apiGroup: "mxl.qvest-digital.com"
+  defaultProvider: "tcp"
+
+leaderElection:
+  enabled: true

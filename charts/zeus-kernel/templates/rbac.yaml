@@ -1,0 +1,40 @@
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: zeus-kernel
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: zeus-kernel
+rules:
+  - apiGroups: ["core.zeus.broadcast"]
+    resources: ["zeusrunbooks", "zeusapplicationpackages"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["core.zeus.broadcast"]
+    resources: ["zeusrunbooks/status", "zeusapplicationpackages/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["mxl.qvest-digital.com"]
+    resources: ["mxlreceivers", "mxlflows", "mxldomains", "mxlflowmirrors", "mxlnodecapabilities"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: zeus-kernel
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: zeus-kernel
+subjects:
+  - kind: ServiceAccount
+    name: zeus-kernel
+    namespace: {{ .Release.Namespace }}

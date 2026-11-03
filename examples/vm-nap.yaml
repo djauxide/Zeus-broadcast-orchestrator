@@ -1,0 +1,22 @@
+
+apiVersion: core.zeus.broadcast/v1alpha1
+kind: ZeusApplicationPackage
+metadata:
+  name: vision-mixer-1
+  namespace: default
+spec:
+  image: registry.local/vm:test
+  imageSignature: "cosign:placeholder"
+  crm:
+    cpu: "16"
+    memory: "32Gi"
+    mediaIO:
+      mxlReader: true
+      mxlWriter: true
+      domainRef: "domain-a"
+      formats: ["video/v210"]
+  nmos:
+    is04: true
+    is05: true
+    transport: urn:x-nmos:transport:mxl
+  healthPath: /healthz
