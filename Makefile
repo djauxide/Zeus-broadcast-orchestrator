@@ -11,14 +11,17 @@ all: build
 
 .PHONY: manifests
 manifests: controller-gen
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." \
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd:allowDangerousTypes=true webhook \
+		paths="./api/v1alpha1" paths="./internal/controller" paths="./internal/fabric" \
+		paths="./internal/nmos" paths="./internal/transport/srt" paths="./internal/mcp/registry" \
+		paths="./cmd/manager" paths="./cmd/zeus-nap-validate" \
 		output:crd:artifacts:config=config/crd/bases \
 		output:rbac:artifacts:config=config/rbac \
 		output:webhook:artifacts:config=config/webhook
 
 .PHONY: generate
 generate: controller-gen
-	$(CONTROLLER_GEN) object paths="./..."
+	$(CONTROLLER_GEN) object paths="./api/v1alpha1"
 
 .PHONY: fmt
 fmt:

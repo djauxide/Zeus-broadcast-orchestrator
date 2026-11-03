@@ -1,4 +1,3 @@
-
 package v1alpha1
 
 import (
@@ -13,10 +12,10 @@ type MediaIO struct {
 }
 
 type CRMResources struct {
-	CPU          string    `json:"cpu"`
-	Memory       string    `json:"memory"`
-	Accelerators []string  `json:"accelerators,omitempty"`
-	MediaIO      MediaIO   `json:"mediaIO,omitempty"`
+	CPU          string   `json:"cpu"`
+	Memory       string   `json:"memory"`
+	Accelerators []string `json:"accelerators,omitempty"`
+	MediaIO      MediaIO  `json:"mediaIO,omitempty"`
 }
 
 type NMOSSpec struct {

@@ -1,4 +1,3 @@
-
 package v1alpha1
 
 // Hub marks these types as the storage version for conversion. When v1beta1

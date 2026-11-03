@@ -1,4 +1,3 @@
-
 // +kubebuilder:object:generate=true
 // +groupName=core.zeus.broadcast
 package v1alpha1

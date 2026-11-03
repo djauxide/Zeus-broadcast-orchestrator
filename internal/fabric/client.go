@@ -1,4 +1,3 @@
-
 package fabric
 
 import (

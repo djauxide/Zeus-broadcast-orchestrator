@@ -1,4 +1,3 @@
-
 package v1alpha1
 
 import (
@@ -18,9 +17,8 @@ import (
 var runbooklog = logf.Log.WithName("zeusrunbook-webhook")
 
 func (r *ZeusRunbook) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
-		WithValidator(&ZeusRunbookValidator{}).
+	return ctrl.NewWebhookManagedBy(mgr, r).
+		WithCustomValidator(&ZeusRunbookValidator{}).
 		Complete()
 }
 

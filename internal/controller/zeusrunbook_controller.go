@@ -1,4 +1,3 @@
-
 package controller
 
 import (
@@ -216,6 +215,6 @@ func (r *ZeusRunbookReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func int32Ptr(i int32) *int32                                  { return &i }
-func boolPtr(b bool) *bool                                     { return &b }
+func int32Ptr(i int32) *int32                                    { return &i }
+func boolPtr(b bool) *bool                                       { return &b }
 func ptrHostPathType(t corev1.HostPathType) *corev1.HostPathType { return &t }
