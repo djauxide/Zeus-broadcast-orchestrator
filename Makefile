@@ -6,6 +6,11 @@ CONTROLLER_GEN := $(LOCALBIN)/controller-gen
 ENVTEST        := $(LOCALBIN)/setup-envtest
 ENVTEST_K8S_VERSION ?= 1.31.0
 
+# Prefer the local envtest asset store. `setup-envtest use` refreshes its
+# release index from GitHub on every invocation, which fails (TLS handshake
+# timeout) on restricted networks even when the assets are already installed.
+ENVTEST_ASSETS = $(if $(wildcard $(HOME)/.local/share/kubebuilder-envtest/k8s/$(ENVTEST_K8S_VERSION)-linux-amd64),$(wildcard $(HOME)/.local/share/kubebuilder-envtest/k8s/$(ENVTEST_K8S_VERSION)-linux-amd64),$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path 2>/dev/null))
+
 .PHONY: all
 all: build
 
@@ -33,12 +38,12 @@ vet:
 
 .PHONY: test
 test: manifests generate fmt vet envtest
-	KUBEBUILDER_ASSETS="$$($(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" \
+	KUBEBUILDER_ASSETS="$(ENVTEST_ASSETS)" \
 		go test ./... -coverprofile cover.out
 
 .PHONY: conversion-test
 conversion-test: manifests envtest
-	KUBEBUILDER_ASSETS="$$($(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" \
+	KUBEBUILDER_ASSETS="$(ENVTEST_ASSETS)" \
 		go test ./test/conversion/... -v -count=1
 
 .PHONY: build

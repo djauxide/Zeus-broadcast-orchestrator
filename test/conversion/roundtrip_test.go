@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -18,7 +19,14 @@ import (
 func TestRunbookRoundTrip(t *testing.T) {
 	// envtest needs the generated CRDs or the ZeusRunbook Create will fail
 	// with "no matches for kind". `make manifests` must run first.
-	env := &envtest.Environment{CRDDirectoryPaths: []string{filepath.Join("..", "..", "config", "crd", "bases")}}
+	//
+	// The default 20s per-component start timeout is too tight on a busy
+	// single-node dev box where the same VM also hosts the kind cluster.
+	env := &envtest.Environment{
+		CRDDirectoryPaths:        []string{filepath.Join("..", "..", "config", "crd", "bases")},
+		ControlPlaneStartTimeout: 90 * time.Second,
+		ControlPlaneStopTimeout:  30 * time.Second,
+	}
 	cfg, err := env.Start()
 	if err != nil {
 		t.Fatalf("start envtest: %v", err)

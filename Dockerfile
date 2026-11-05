@@ -5,6 +5,6 @@
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY bin/linux/manager /manager
 COPY bin/linux/zeus-nap-validate /zeus-nap-validate
-USER nonroot:nonroot
+USER 65532:65532
 EXPOSE 8080 8081 9443
 ENTRYPOINT ["/manager"]

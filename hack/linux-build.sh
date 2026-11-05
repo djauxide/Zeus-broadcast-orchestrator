@@ -8,7 +8,10 @@
 #   - GNU Make
 set -euo pipefail
 cd "$(dirname "$0")/.."
-if [ -d "$HOME/sdk/go1.26" ]; then
-  export PATH="$HOME/sdk/go1.26/bin:$PATH"
-fi
+for candidate in "$HOME/sdk/go1.26" /home/user/sdk/go1.26; do
+  if [ -d "$candidate" ]; then
+    export PATH="$candidate/bin:$PATH"
+    break
+  fi
+done
 make "$@" LOCALBIN="$HOME/zeus-bin"
