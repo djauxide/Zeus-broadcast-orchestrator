@@ -2,6 +2,9 @@ package controller
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/hex"
+	"fmt"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -40,6 +43,7 @@ func (r *ZeusRunbookReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			for _, p := range rb.Spec.NAPs {
 				if err := r.Fabric.DeleteReceiver(ctx, rb.Namespace, p.Name); err != nil {
 					logger.Error(err, "delete receiver", "nap", p.Name)
+					ReconcileErrors.WithLabelValues("delete_receiver").Inc()
 					return ctrl.Result{}, err
 				}
 				if err := r.deleteDeployment(ctx, rb.Namespace, p.Name); err != nil {
@@ -102,8 +106,31 @@ func (r *ZeusRunbookReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	for _, p := range rb.Spec.NAPs {
-		flowID := rb.Name + "-" + p.Name
-		if err := r.Fabric.EnsureReceiver(ctx, rb.Namespace, p.Name, flowID, p.Name, "tcp", &rb); err != nil {
+		flowID := zeusFlowID(string(rb.UID), p.Name)
+
+		// The deployment is ensured first so a live pod exists before we
+		// point the receiver at it.
+		var nap zeusv1.ZeusApplicationPackage
+		if err := r.Get(ctx, types.NamespacedName{Namespace: rb.Namespace, Name: p.NAP}, &nap); err != nil {
+			return ctrl.Result{}, err
+		}
+		if err := r.ensureDeployment(ctx, &rb, p, &nap); err != nil {
+			return r.setPhase(ctx, &rb, "Degraded", "DeployError", err.Error())
+		}
+
+		podName, err := r.findAppPod(ctx, rb.Namespace, p.Name)
+		if err != nil {
+			return r.setPhase(ctx, &rb, "Degraded", "PodLookupError", err.Error())
+		}
+		if podName == "" {
+			if _, serr := r.setPhase(ctx, &rb, "Reconciling", "PodNotFound",
+				fmt.Sprintf("no pod with app=%s yet; deployment may still be pulling", p.Name)); serr != nil {
+				return ctrl.Result{}, serr
+			}
+			return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
+		}
+
+		if err := r.Fabric.EnsureReceiver(ctx, rb.Namespace, p.Name, flowID, podName, "tcp", &rb); err != nil {
 			if apierrors.IsNotFound(err) {
 				return r.setPhase(ctx, &rb, "Degraded", "FabricNotInstalled",
 					"mxl-k8s CRDs not found; install the mxl chart")
@@ -112,19 +139,29 @@ func (r *ZeusRunbookReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				return ctrl.Result{Requeue: true}, nil
 			}
 			logger.Error(err, "fabric ensure failed", "nap", p.Name)
+			ReconcileErrors.WithLabelValues("fabric_ensure").Inc()
 			return ctrl.Result{}, err
-		}
-
-		var nap zeusv1.ZeusApplicationPackage
-		if err := r.Get(ctx, types.NamespacedName{Namespace: rb.Namespace, Name: p.NAP}, &nap); err != nil {
-			return ctrl.Result{}, err
-		}
-		if err := r.ensureDeployment(ctx, &rb, p, &nap); err != nil {
-			return r.setPhase(ctx, &rb, "Degraded", "DeployError", err.Error())
 		}
 	}
 
 	return r.setPhase(ctx, &rb, "Live", "WorkflowReady", "")
+}
+
+// findAppPod returns the name of the oldest non-terminating pod carrying
+// the app=<name> label in the namespace, or "" if none exists yet.
+func (r *ZeusRunbookReconciler) findAppPod(ctx context.Context, namespace, app string) (string, error) {
+	var list corev1.PodList
+	if err := r.List(ctx, &list, client.InNamespace(namespace), client.MatchingLabels{"app": app}); err != nil {
+		return "", err
+	}
+	for i := range list.Items {
+		pod := &list.Items[i]
+		if pod.DeletionTimestamp != nil {
+			continue
+		}
+		return pod.Name, nil
+	}
+	return "", nil
 }
 
 func (r *ZeusRunbookReconciler) ensureDeployment(ctx context.Context, rb *zeusv1.ZeusRunbook, p zeusv1.NAPPlacement, nap *zeusv1.ZeusApplicationPackage) error {
@@ -190,6 +227,7 @@ func (r *ZeusRunbookReconciler) setPhase(ctx context.Context, rb *zeusv1.ZeusRun
 	if rb.Status.Phase == phase && len(rb.Status.Conditions) > 0 && rb.Status.Conditions[0].Reason == reason {
 		return ctrl.Result{}, nil
 	}
+	prevPhase := rb.Status.Phase
 	rb.Status.Phase = phase
 	rb.Status.Conditions = []metav1.Condition{{
 		Type:               "Ready",
@@ -201,8 +239,15 @@ func (r *ZeusRunbookReconciler) setPhase(ctx context.Context, rb *zeusv1.ZeusRun
 	log.FromContext(ctx).Info("phase_transition",
 		"runbook", rb.Name, "phase", phase, "reason", reason,
 		"actor", "controller", "causal_chain_id", string(rb.UID))
-	RunbookPhase.WithLabelValues(phase).Set(1)
+	// Keep the gauge accurate across transitions: only the current phase is 1.
+	if prevPhase != phase {
+		RunbookPhase.WithLabelValues(phase).Set(1)
+		if prevPhase != "" {
+			RunbookPhase.WithLabelValues(prevPhase).Set(0)
+		}
+	}
 	if err := r.Status().Update(ctx, rb); err != nil {
+		ReconcileErrors.WithLabelValues("status_update").Inc()
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, err
 	}
 	return ctrl.Result{}, nil
@@ -218,3 +263,17 @@ func (r *ZeusRunbookReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func int32Ptr(i int32) *int32                                    { return &i }
 func boolPtr(b bool) *bool                                       { return &b }
 func ptrHostPathType(t corev1.HostPathType) *corev1.HostPathType { return &t }
+
+// zeusFlowID derives a deterministic RFC 4122 version-5-style UUID from the
+// runbook UID and the NAP placement name. The mxl-k8s MxlReceiver CRD
+// validates spec.flowID against a UUID pattern, so the previous
+// "<runbook>-<nap>" value was rejected at admission. Deterministic output
+// keeps re-reconciliation idempotent.
+func zeusFlowID(uid, nap string) string {
+	h := sha1.Sum([]byte(uid + "/" + nap))
+	u := h[:16]
+	u[6] = (u[6] & 0x0f) | 0x50
+	u[8] = (u[8] & 0x3f) | 0x80
+	s := hex.EncodeToString(u)
+	return s[0:8] + "-" + s[8:12] + "-" + s[12:16] + "-" + s[16:20] + "-" + s[20:32]
+}

@@ -25,7 +25,20 @@ func (r *RealClient) EnsureReceiver(ctx context.Context, namespace, name, flowID
 	existing := &unstructured.Unstructured{}
 	existing.SetGroupVersionKind(mxlReceiverGVK)
 	if err := r.c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, existing); err == nil {
-		return nil
+		// Keep podRef in sync with the live pod of the app label. The
+		// receiver pins a concrete Pod name, which changes on every
+		// Deployment rollout.
+		podRef, _, _ := unstructured.NestedString(existing.Object, "spec", "podRef", "name")
+		flowRef, _, _ := unstructured.NestedString(existing.Object, "spec", "flowID")
+		if podRef == podName && flowRef == flowID {
+			return nil
+		}
+		spec, _, _ := unstructured.NestedMap(existing.Object, "spec")
+		spec["flowID"] = flowID
+		spec["podRef"] = map[string]interface{}{"name": podName, "namespace": namespace}
+		spec["provider"] = provider
+		existing.Object["spec"] = spec
+		return r.c.Update(ctx, existing)
 	}
 
 	obj := &unstructured.Unstructured{}
