@@ -108,8 +108,8 @@ helm install zeus-crds charts/zeus-crds \
   --namespace zeus-system --create-namespace
 make deploy
 
-# 4. Deploy NMOS registry (external)
-kubectl apply -f https://raw.githubusercontent.com/rhastie/easy-nmos/master/deploy/nmos-cpp.yaml
+# 4. Deploy NMOS registry (external, optional for the gates)
+kubectl apply -f deploy/nmos-registry.yaml
 
 # 5. Create passphrase, apply runbook
 ./hack/gen-passphrase.sh default srt-mvp-pass

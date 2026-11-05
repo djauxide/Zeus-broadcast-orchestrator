@@ -1,0 +1,22 @@
+# Local-verification NAP manifest (probe image). Not for production.
+apiVersion: core.zeus.broadcast/v1alpha1
+kind: ZeusApplicationPackage
+metadata:
+  name: probe-mixer
+  namespace: default
+spec:
+  image: localhost/zeus-nap-probe:0.1.0
+  imageSignature: "cosign:placeholder"
+  crm:
+    cpu: "100m"
+    memory: "32Mi"
+    mediaIO:
+      mxlReader: true
+      mxlWriter: true
+      domainRef: "domain-a"
+      formats: ["video/v210"]
+  nmos:
+    is04: true
+    is05: true
+    transport: urn:x-nmos:transport:mxl
+  healthPath: /healthz

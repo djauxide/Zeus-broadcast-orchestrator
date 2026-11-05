@@ -1,0 +1,84 @@
+# External NMOS registry for development (IS-04 query API + IS-05 registration).
+#
+# The spec previously pointed at
+# https://raw.githubusercontent.com/rhastie/easy-nmos/master/deploy/nmos-cpp.yaml,
+# which does not exist: easy-nmos ships a docker-compose stack, not a Kubernetes
+# manifest. This file reproduces just the registry container from that stack
+# (rhastie/nmos-cpp with RUN_NODE=FALSE and the easy-nmos registry.json).
+#
+# The kernel does not host a registry (D-005); it only consumes IS-04 and issues
+# IS-05, so this Deployment is optional for the verification gates.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nmos
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nmos-registry-config
+  namespace: nmos
+data:
+  registry.json: |
+    {
+      "pri": 99,
+      "logging_level": -20,
+      "http_trace": false,
+      "label": "zeus-dev-registry",
+      "http_port": 80,
+      "query_ws_port": 81,
+      "registration_expiry_interval": 12
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nmos-registry
+  namespace: nmos
+  labels:
+    app: nmos-registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nmos-registry
+  template:
+    metadata:
+      labels:
+        app: nmos-registry
+    spec:
+      containers:
+        - name: nmos-cpp
+          image: rhastie/nmos-cpp:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: RUN_NODE
+              value: "FALSE"
+          ports:
+            - { name: http, containerPort: 80 }
+            - { name: query-ws, containerPort: 81 }
+          volumeMounts:
+            - name: config
+              mountPath: /home/registry.json
+              subPath: registry.json
+              readOnly: true
+          readinessProbe:
+            httpGet: { path: /x-nmos/query/v1.3/, port: 80 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: nmos-registry-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nmos-registry
+  namespace: nmos
+spec:
+  selector:
+    app: nmos-registry
+  ports:
+    - { name: http, port: 80, targetPort: 80 }
+    - { name: query-ws, port: 81, targetPort: 81 }

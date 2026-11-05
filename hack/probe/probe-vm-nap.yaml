@@ -1,0 +1,29 @@
+# Dev-only substitute for examples/vm-nap.yaml.
+#
+# The spec's example image `registry.local/vm:test` does not exist and cannot be
+# pulled in kind (ERRATA E-017). This manifest keeps the example's NAP name and
+# contract but points at the locally built probe image so that the *spec's own*
+# runbook (examples/mvp-single-path.yaml) can be exercised end to end.
+#
+# Do not use outside local verification.
+apiVersion: core.zeus.broadcast/v1alpha1
+kind: ZeusApplicationPackage
+metadata:
+  name: vision-mixer-1
+  namespace: default
+spec:
+  image: localhost/zeus-nap-probe:0.1.0
+  imageSignature: "cosign:placeholder"
+  crm:
+    cpu: "100m"
+    memory: "32Mi"
+    mediaIO:
+      mxlReader: true
+      mxlWriter: true
+      domainRef: "domain-a"
+      formats: ["video/v210"]
+  nmos:
+    is04: true
+    is05: true
+    transport: urn:x-nmos:transport:mxl
+  healthPath: /healthz

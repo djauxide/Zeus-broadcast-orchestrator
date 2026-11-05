@@ -33,3 +33,45 @@ CI exercises `tcp`; RDMA paths are API-accepted but not CI-tested upstream.
 ## D-008: Microservice boundary
 Kernel is one binary. MCP servers, agents, and NAPs are separate Deployments. Splitting
 reconcilers breaks finalizer atomicity and status ownership.
+
+## D-009: Local verification topology
+Development verification runs on a single-node kind cluster driven through the local
+Podman machine (`KIND_EXPERIMENTAL_PROVIDER=podman`). Cert-manager is installed for
+webhook CA injection. This is a dev harness, not a production topology; any gate that
+assumes multi-node placement (gate 12) is recorded as a demonstration, not a claim.
+
+## D-010: Probe NAP for end-to-end verification
+`examples/vm-nap.yaml` references a fictional image. Rather than weaken the example, a
+tiny locally built probe (`hack/probe/`) is used to prove the reconcile → Deployment →
+Pod → MxlReceiver chain. The probe is explicitly test-only and is not part of the
+product.
+
+## D-011: Metrics registry
+Zeus metrics register on `sigs.k8s.io/controller-runtime/pkg/metrics.Registry`, the
+registry the v0.25 metrics server actually serves. A startup child is seeded so
+`zeus_reconcile_errors_total` exists before the first error.
+
+## D-012: Probe tolerance on constrained nodes
+Liveness/readiness keep the spec's paths and delays but use a 3 s timeout and a
+liveness `failureThreshold` of 5. With a 500m CPU limit on a busy single-node dev
+cluster, the 1 s default produced restart storms while the process was merely
+descheduled; a restart does not make the controller healthier.
+
+## D-013: Webhook auth is not exercised locally
+The kernel issues IS-05 to the NMOS registry but the MVP does not enforce IS-10 OAuth
+tokens on inbound calls. Local runs leave `nmos.authz.enabled=false`; enabling it
+requires a token server that is out of scope for the MVP gates.
+
+## D-014: envtest assets are resolved locally first
+`setup-envtest use` refreshes a release index from GitHub on every call; on a
+restricted or loaded network it fails with a TLS handshake timeout even when the
+control-plane binaries are already installed, which made `make test` and
+`make conversion-test` fail with an empty `KUBEBUILDER_ASSETS`. The Makefile now
+prefers `$HOME/.local/share/kubebuilder-envtest/k8s/<version>-linux-amd64` and only
+falls back to `setup-envtest`.
+
+## D-015: Build and test serially on the dev host
+The Windows host has 8 GB RAM and the Podman VM 3.8 GB. Running the kind cluster and
+a full `go test ./...` envtest control plane at the same time exhausts the host and
+causes API timeouts and probe-driven restarts. Gate runs 1–3 are executed with the
+kind node stopped; cluster verification runs when no compiler is active.

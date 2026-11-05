@@ -1,0 +1,29 @@
+# Second local-verification runbook, used to exercise a fresh phase
+# transition for gate 11 (audit log). Not for production.
+apiVersion: core.zeus.broadcast/v1alpha1
+kind: ZeusRunbook
+metadata:
+  name: probe-audit
+  namespace: default
+spec:
+  eventClass: local-verification
+  naps:
+    - name: probe-audit-mixer
+      nap: probe-mixer
+  ingress:
+    contribution:
+      redundancy: none
+      mergeMode: switchover
+      paths:
+        - name: primary
+          transport: srt
+          priority: 1
+          srt:
+            mode: caller
+            remoteHost: 203.0.113.10
+            remotePort: 9000
+            latencyMs: 120
+            pbKeyLen: 32
+            passphraseSecretRef:
+              name: srt-mvp-pass
+              key: passphrase

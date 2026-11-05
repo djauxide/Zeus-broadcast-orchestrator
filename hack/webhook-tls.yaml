@@ -1,0 +1,29 @@
+# One-off: self-signed Issuer + serving certificate for the Zeus validating
+# webhook. Apply with a running cert-manager:
+#   kubectl apply -f hack/webhook-tls.yaml
+# The generated secret `zeus-kernel-webhook-tls` is mounted by the zeus-kernel
+# Deployment at /tmp/k8s-webhook-server/serving-certs (controller-runtime's
+# default CertDir) and referenced by the ValidatingWebhookConfiguration via a
+# cert-manager.io/inject-ca-from annotation.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: zeus-kernel-selfsigned
+  namespace: zeus-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: zeus-kernel-webhook-tls
+  namespace: zeus-system
+spec:
+  secretName: zeus-kernel-webhook-tls
+  dnsNames:
+    - zeus-kernel-webhook
+    - zeus-kernel-webhook.zeus-system
+    - zeus-kernel-webhook.zeus-system.svc
+  issuerRef:
+    kind: Issuer
+    name: zeus-kernel-selfsigned
