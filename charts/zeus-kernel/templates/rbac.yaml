@@ -23,8 +23,45 @@ rules:
     resources: ["deployments"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: [""]
+    # read-only; the reconciler binds MxlReceiver.podRef to the live pod of
+    # the app label, so it must list pods cluster-wide (runbooks can
+    # reference NAPs in any namespace)
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    # read-only; controller-runtime's cache lists secrets cluster-wide to
+    # resolve passphraseSecretRef for runbooks in any namespace
     resources: ["secrets"]
-    verbs: ["get"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    # leader election emits an event when this replica becomes leader; without
+    # this the API server rejects it with "events is forbidden"
+    resources: ["events"]
+    verbs: ["create", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zeus-kernel-leader-election
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zeus-kernel-leader-election
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zeus-kernel-leader-election
+subjects:
+  - kind: ServiceAccount
+    name: zeus-kernel
+    namespace: {{ .Release.Namespace }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

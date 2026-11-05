@@ -1,4 +1,4 @@
-
+{{- if .Values.providerValidate.enabled }}
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -33,3 +33,4 @@ spec:
       volumes:
         - { name: dev-infiniband, hostPath: { path: /dev/infiniband, type: DirectoryOrCreate } }
         - { name: mxl-domain, hostPath: { path: /run/mxl/domain, type: DirectoryOrCreate } }
+{{- end }}

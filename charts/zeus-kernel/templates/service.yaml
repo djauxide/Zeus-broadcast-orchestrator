@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: zeus-kernel-webhook
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: zeus-kernel
+spec:
+  selector:
+    app: zeus-kernel
+  ports:
+    - name: webhook
+      port: 443
+      targetPort: 9443

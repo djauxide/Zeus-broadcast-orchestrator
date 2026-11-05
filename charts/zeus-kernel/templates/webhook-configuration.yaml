@@ -1,0 +1,31 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: zeus-kernel-validating-webhook-configuration
+  labels:
+    app: zeus-kernel
+  annotations:
+    # cert-manager's cainjector fills in caBundle from the serving cert.
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/zeus-kernel-webhook-tls
+webhooks:
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: zeus-kernel-webhook
+        namespace: {{ .Release.Namespace }}
+        path: /validate-core-zeus-broadcast-v1alpha1-zeusrunbook
+        port: 443
+    failurePolicy: Fail
+    sideEffects: None
+    name: vzeusrunbook.kb.io
+    rules:
+      - apiGroups:
+          - core.zeus.broadcast
+        apiVersions:
+          - v1alpha1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - zeusrunbooks

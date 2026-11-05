@@ -38,3 +38,9 @@ mxl:
 
 leaderElection:
   enabled: true
+
+# The provider-validation DaemonSet requires a separately built image and is
+# only meaningful for RDMA providers. MVP (tcp) leaves it disabled; enable
+# explicitly for RDMA rollouts.
+providerValidate:
+  enabled: false

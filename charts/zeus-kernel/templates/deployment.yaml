@@ -32,9 +32,16 @@ spec:
           livenessProbe:
             httpGet: { path: /healthz, port: 8081 }
             initialDelaySeconds: 15
+            # The controller runs with a 500m CPU limit; on a busy single-node
+            # dev cluster a 1s probe timeout causes restart storms while the
+            # process is merely descheduled. Keep the probe meaningful but
+            # tolerant of scheduler latency.
+            timeoutSeconds: 3
+            failureThreshold: 5
           readinessProbe:
             httpGet: { path: /readyz, port: 8081 }
             initialDelaySeconds: 5
+            timeoutSeconds: 3
           securityContext:
             runAsNonRoot: true
             readOnlyRootFilesystem: true
@@ -44,5 +51,12 @@ spec:
             - { name: metrics, containerPort: 8080 }
           volumeMounts:
             - { name: tmp, mountPath: /tmp }
+            - { name: webhook-tls, mountPath: /tmp/k8s-webhook-server/serving-certs, readOnly: true }
       volumes:
         - { name: tmp, emptyDir: {} }
+        - name: webhook-tls
+          secret:
+            secretName: zeus-kernel-webhook-tls
+            items:
+              - { key: tls.crt, path: tls.crt }
+              - { key: tls.key, path: tls.key }
