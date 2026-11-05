@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zeus Broadcast Orchestrator — Local Deployment Preview</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #131a23;
+    --panel-2: #182231;
+    --line: #243044;
+    --text: #dce6f2;
+    --muted: #8b9bb0;
+    --accent: #5cc8ff;
+    --ok: #35d07f;
+    --warn: #f0b429;
+    --fail: #ff5c73;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 600px at 20% -10%, #12253a 0%, var(--bg) 55%);
+    color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 40px 24px 80px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  header { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 20px; }
+  h1 { margin: 0; font-size: 30px; letter-spacing: -0.5px; }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--muted); margin-top: 6px; font-size: 14px; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; background: #10281d; border: 1px solid #1f5c3f; color: var(--ok); border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 600; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px rgba(53,208,127,.15); }
+  h2 { font-size: 18px; margin: 36px 0 14px; letter-spacing: -0.2px; }
+  h2 .num { color: var(--accent); font-family: var(--mono); font-size: 14px; margin-right: 10px; }
+  .grid { display: grid; gap: 14px; }
+  .cards { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+  .card { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .card .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .8px; }
+  .card .v { font-size: 24px; font-weight: 650; margin-top: 6px; }
+  .card .v small { font-size: 13px; color: var(--muted); font-weight: 400; }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: #101722; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .8px; font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  td.num { color: var(--muted); font-family: var(--mono); width: 36px; }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .3px; }
+  .pass { background: rgba(53,208,127,.14); color: var(--ok); border: 1px solid rgba(53,208,127,.35); }
+  .partial { background: rgba(240,180,41,.13); color: var(--warn); border: 1px solid rgba(240,180,41,.35); }
+  .skip { background: rgba(139,155,176,.12); color: var(--muted); border: 1px solid rgba(139,155,176,.3); }
+  code, .mono { font-family: var(--mono); font-size: 13px; }
+  code { background: #0d141d; border: 1px solid var(--line); padding: 1px 6px; border-radius: 5px; color: #b9d9f2; }
+  .arch { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+  .cluster { border: 1px dashed #2d4460; border-radius: 12px; padding: 18px; background: rgba(12,22,34,.45); }
+  .cluster-title { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+  .ns-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .ns { background: #101924; border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .ns h3 { margin: 0 0 4px; font-size: 13px; color: var(--accent); font-family: var(--mono); font-weight: 600; }
+  .ns .work { color: var(--muted); font-size: 13px; }
+  .ns .state { margin-top: 10px; font-size: 12px; color: var(--ok); }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .pair { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+  .step { background: #0f1a27; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+  .step b { color: var(--accent); font-weight: 600; }
+  .arrow { color: #405a78; }
+  ul.limits { margin: 0; padding-left: 20px; color: var(--muted); }
+  ul.limits li { margin: 7px 0; }
+  footer { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line); color: #64748b; font-size: 12px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .filetree { columns: 2; column-gap: 28px; font-family: var(--mono); font-size: 12.5px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px; }
+  .filetree div { break-inside: avoid; padding: 2px 0; }
+  .filetree .d { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Zeus <span>Broadcast Orchestrator</span></h1>
+      <div class="sub">Materialized from the README spec · deployed to a local kind cluster · 5 November 2026</div>
+    </div>
+    <div class="pill"><span class="dot"></span> MVP live on kind</div>
+  </header>
+
+  <div class="grid cards" style="margin-top:24px">
+    <div class="card"><div class="k">Kernel replicas</div><div class="v">2/2 <small>ready · 0 restarts</small></div></div>
+    <div class="card"><div class="k">Verification gates</div><div class="v">10 <small>pass · 2 partial</small></div></div>
+    <div class="card"><div class="k">CRDs installed</div><div class="v">5 <small>zeus + mxl-k8s</small></div></div>
+    <div class="card"><div class="k">Runbooks live</div><div class="v">2 <small>probe fixtures</small></div></div>
+  </div>
+
+  <h2><span class="num">01</span>What is running</h2>
+  <div class="arch">
+    <div class="cluster">
+      <div class="cluster-title">kind cluster · kind-control-plane · Kubernetes v1.32.0 · single node</div>
+      <div class="ns-grid">
+        <div class="ns">
+          <h3>zeus-system</h3>
+          <div class="work">zeus-kernel ×2 · webhook :9443<br>metrics :8080 · probes :8081</div>
+          <div class="state">● leader elected · PDB minAvailable 1</div>
+        </div>
+        <div class="ns">
+          <h3>mxl-system</h3>
+          <div class="work">mxl-k8s operator · gateway · agent<br>provider <code>tcp</code></div>
+          <div class="state">● MxlReceiver / MxlFlow CRDs served</div>
+        </div>
+        <div class="ns">
+          <h3>cert-manager</h3>
+          <div class="work">controller · cainjector · webhook</div>
+          <div class="state">● webhook CA injected</div>
+        </div>
+        <div class="ns">
+          <h3>default</h3>
+          <div class="work">probe-mixer · probe-audit-mixer<br>local verification NAP pods</div>
+          <div class="state">● Running · receivers bound</div>
+        </div>
+      </div>
+      <div class="flow">
+        <span class="pair"><div class="step"><b>ZeusRunbook</b> applied</div><div class="arrow">→</div></span>
+        <span class="pair"><div class="step"><b>Webhook</b> validates SRT/secret refs</div><div class="arrow">→</div></span>
+        <span class="pair"><div class="step"><b>NAP</b> must be Validated</div><div class="arrow">→</div></span>
+        <span class="pair"><div class="step"><b>Deployment + Pod</b> ensured</div><div class="arrow">→</div></span>
+        <span class="pair"><div class="step"><b>MxlReceiver</b> bound to live pod</div><div class="arrow">→</div></span>
+        <div class="step"><b>Live</b> + phase metric + audit log</div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="num">02</span>Verification gates</h2>
+  <table>
+    <thead><tr><th>#</th><th>Gate</th><th>Result</th><th>Evidence</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>Build</td><td><span class="badge pass">PASS</span></td><td><code>bin/manager</code>, <code>bin/zeus-nap-validate</code> produced on Linux</td></tr>
+      <tr><td class="num">2</td><td>Unit + envtest</td><td><span class="badge pass">PASS</span></td><td><code>go test ./...</code> exit 0 · conversion 18.1s</td></tr>
+      <tr><td class="num">3</td><td>Conversion round-trip</td><td><span class="badge pass">PASS</span></td><td><code>TestRunbookRoundTrip</code> 23.4s, spec unchanged</td></tr>
+      <tr><td class="num">4</td><td>Webhook accepts MVP</td><td><span class="badge pass">PASS</span></td><td>server dry-run accepted <code>mvp-single-path</code></td></tr>
+      <tr><td class="num">5</td><td>Dual-path forward-compat</td><td><span class="badge pass">PASS</span></td><td>server dry-run accepted <code>tier-one-dual-path</code></td></tr>
+      <tr><td class="num">6</td><td>Invalid SRT rejected</td><td><span class="badge pass">PASS</span></td><td><code>srt.remoteHost: Required value</code></td></tr>
+      <tr><td class="num">7</td><td>Passphrase secrecy</td><td><span class="badge pass">PASS</span></td><td>only <code>passphraseSecretRef</code> name/key in the object</td></tr>
+      <tr><td class="num">8</td><td>End-to-end</td><td><span class="badge partial">PARTIAL</span></td><td><code>phase: Live</code>; receiver bound to the live pod; <code>PathHealth</code> not written by the MVP</td></tr>
+      <tr><td class="num">9</td><td>Clean teardown</td><td><span class="badge pass">PASS</span></td><td>receiver + deployment + flow mirror gone after delete</td></tr>
+      <tr><td class="num">10</td><td>Metrics</td><td><span class="badge pass">PASS</span></td><td><code>zeus_reconcile_errors_total</code>, <code>zeus_runbook_phase</code></td></tr>
+      <tr><td class="num">11</td><td>Audit log</td><td><span class="badge pass">PASS</span></td><td><code>phase_transition</code> JSON with <code>causal_chain_id</code></td></tr>
+      <tr><td class="num">12</td><td>Drain resilience</td><td><span class="badge partial">PARTIAL</span></td><td>PDB allows 1 disruption; one replica stayed ready through a pod eviction</td></tr>
+    </tbody>
+  </table>
+
+  <h2><span class="num">03</span>Repository</h2>
+  <div class="filetree">
+    <div><span class="d">api/v1alpha1/</span> CRD types, webhook, conversion</div>
+    <div><span class="d">cmd/</span> manager · zeus-nap-validate</div>
+    <div><span class="d">internal/controller/</span> runbook + NAP reconcilers, metrics</div>
+    <div><span class="d">internal/fabric/</span> fake + real MxlReceiver client</div>
+    <div><span class="d">internal/nmos/</span> IS-04/IS-05 client</div>
+    <div><span class="d">charts/zeus-kernel/</span> deployment, webhook, RBAC, PDB</div>
+    <div><span class="d">charts/zeus-crds/</span> generated CRDs</div>
+    <div><span class="d">examples/</span> spec manifests (kept unchanged)</div>
+    <div><span class="d">deploy/nmos-registry.yaml</span> dev NMOS registry</div>
+    <div><span class="d">hack/</span> Linux build, probes, passphrase, TLS</div>
+    <div><span class="d">test/conversion/</span> envtest round-trip</div>
+    <div><span class="d">docs/</span> ERRATA · VERIFICATION · DECISION_LOG</div>
+  </div>
+
+  <h2><span class="num">04</span>Honest limitations</h2>
+  <ul class="limits">
+    <li><b>Gate 8 is partial:</b> <code>PathHealth[0].state: up</code> is specified but no MVP code writes it. Fabric feedback is Phase 2; the gate is not fabricated.</li>
+    <li><b>Gate 12 is a demonstration:</b> draining the only node would evict the API server, etcd and DNS. Verified with PDB state plus a live pod eviction instead.</li>
+    <li><b>Fabric is bound, not flowing:</b> <code>MxlReceiver</code> points at the correct pod, but without a real MXL producer there is no <code>MxlFlowMirror</code> and the receiver stays <code>Pending</code> in mxl-k8s terms.</li>
+    <li><b>No real SRT/RIST:</b> transport code is scaffolding; the webhook rejects malformed SRT but nothing encrypts media yet.</li>
+    <li><b>Single-node dev topology:</b> topology spread is overridden for kind, NMOS registry is not deployed, and RDMA providers are out of scope.</li>
+  </ul>
+
+  <footer>
+    <span>Spec: README.md §7 · Evidence: docs/VERIFICATION.md · Deviations: docs/ERRATA.md</span>
+    <span>zeus-kernel 0.1.0 · image e8833d3bc390</span>
+  </footer>
+</div>
+</body>
+</html>
