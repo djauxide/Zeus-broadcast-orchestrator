@@ -91,3 +91,14 @@ The webhook's hitless rules are selected by `Contribution.MergeMode`, not
 `Redundancy` (the spec example sets both to `hitless`). Test helpers must set both
 fields explicitly; a helper that hardcodes `MergeMode: "switchover"` while setting
 `Redundancy: "hitless"` would never exercise the hitless validation path.
+
+## D-018: PathHealth via SRT bridge (Phase 2 Week 1)
+PathHealth is measured, not fabricated. The SRT bridge opens a real TCP
+socket to the peer's remoteHost:remotePort and times a probe round trip to
+derive RTT. State is up when the peer echoes, degraded when reachable but
+not echoing, down on connection failure. Without libsrt this is TCP-level
+connectivity, not SRT ARQ statistics; loss/jitter are 0 until an SRT library
+binding is integrated. The reconciler writes status.pathHealth[] for each
+SRT path and degrades the runbook to Degraded/PathDown when any path is
+down. Verified with unit tests against a real TCP echo listener; live cluster
+verification pending.

@@ -30,7 +30,7 @@ compile for `windows/amd64` (E-006).
 | 5 | Dual-path forward-compat | **PASS** | `zeusrunbook.core.zeus.broadcast/tier-one-dual-path created (server dry run)` (runtime guard, not admission) |
 | 6 | Invalid SRT rejected | **PASS** | `spec.ingress.contribution.paths[0].srt.remoteHost: Required value: required for caller/rendezvous` |
 | 7 | Passphrase secrecy | **PASS** | `kubectl get … -o yaml` shows only `passphraseSecretRef: {name: srt-mvp-pass, key: passphrase}` |
-| 8 | End-to-end | **PARTIAL** | Spec runbook reaches `phase: Live`, `reason: WorkflowReady`; `MxlReceiver` binds the live pod. `PathHealth[0].state` is empty — the MVP reconciler never writes it (E-014). |
+| 8 | End-to-end | **PARTIAL** | Spec runbook reaches `phase: Live`, `reason: WorkflowReady`; `MxlReceiver` binds the live pod. `PathHealth` implemented in Phase 2 (SRT bridge `Health()` + reconciler writer) but not yet verified live on cluster (E-014). |
 | 9 | Clean teardown | **PASS** | After `kubectl delete zeusrunbook mvp-single-path`: no `vision-mixer-1` `MxlReceiver`, no `vision-mixer-1` Deployment, no `MxlFlowMirror` |
 | 10 | Metrics | **PASS** | `zeus_reconcile_errors_total{reason="startup"} 0`, `zeus_runbook_phase{phase="Live"} 1`, plus `Degraded`/`Reconciling` series |
 | 11 | Audit log | **PASS** | JSON `phase_transition` lines for `probe-audit` with `"actor":"controller"` and a stable `"causal_chain_id":"edd6a72b-7694-4c22-919f-f0aef645674d"` |
@@ -53,9 +53,17 @@ The NAP image is the locally built probe because the spec's example image
 `registry.local/vm:test` does not exist (E-017). The runbook itself is the
 unmodified `examples/mvp-single-path.yaml`.
 
-`PathHealth` is a first-class status field (D-006) but no MVP code path fills it:
-fabric feedback (mxl-k8s receiver status) is Phase 2. The gate as written is
-therefore not fully satisfiable without fabricating status.
+`PathHealth` is a first-class status field (D-006). Phase 2 implements it:
+the SRT bridge `Health()` measures real TCP connect RTT to the peer and
+returns `state: up/degraded/down`; the reconciler writes `status.pathHealth[]`
+for each SRT contribution path and degrades the runbook when a path is down.
+Unit-tested against a real TCP echo listener (up path → RTT measured,
+down path → `Degraded/PathDown`). Live cluster verification pending: apply
+an SRT path to a runbook and confirm `kubectl get zeusrunbook -o
+jsonpath='{.status.pathHealth}'` returns real measured values.
+
+Fabric feedback (mxl-k8s receiver status) is still Phase 2 and not wired into
+`PathHealth` yet.
 
 ### NAP watch verification (correctness hardening)
 
