@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 
 	zeusv1 "github.com/zeus-broadcast/zeus-kernel/api/v1alpha1"
 	"github.com/zeus-broadcast/zeus-kernel/internal/fabric"
+	"github.com/zeus-broadcast/zeus-kernel/internal/transport/srt"
 )
 
 func testScheme(t *testing.T) *runtime.Scheme {
@@ -182,3 +184,109 @@ func TestTeardownRemovesFabricAndDeployment(t *testing.T) {
 		t.Fatal("runbook still present after finalizer removal")
 	}
 }
+
+// fakeBridge implements srt.Bridge with configurable health results for tests.
+type fakeBridge struct {
+	ph zeusv1.PathHealth
+	err error
+}
+
+func (f *fakeBridge) Start(context.Context, zeusv1.SRTSpec, []byte) error { return nil }
+func (f *fakeBridge) Health(context.Context) (zeusv1.PathHealth, error) {
+	return f.ph, f.err
+}
+func (f *fakeBridge) Stop(context.Context) error { return nil }
+
+func newReconcilerWithBridge(t *testing.T, b srt.Bridge, objs ...client.Object) *ZeusRunbookReconciler {
+	t.Helper()
+	s := testScheme(t)
+	c := fake.NewClientBuilder().
+		WithScheme(s).
+		WithStatusSubresource(&zeusv1.ZeusRunbook{}, &zeusv1.ZeusApplicationPackage{}).
+		WithObjects(objs...).
+		Build()
+	return &ZeusRunbookReconciler{Client: c, Scheme: s, Fabric: fabric.NewFakeClient(), Bridge: b}
+}
+
+func testRunbookWithSRT(name, nap, remoteHost string) *zeusv1.ZeusRunbook {
+	rb := testRunbook(name, nap)
+	rb.Spec.Ingress = &zeusv1.IngressSpec{Contribution: &zeusv1.ContributionSpec{
+		Redundancy: "none",
+		MergeMode:  "switchover",
+		Paths: []zeusv1.WANPathSpec{{
+			Name:      "primary",
+			Transport: "srt",
+			Priority:  1,
+			SRT: &zeusv1.SRTSpec{
+				Mode:                zeusv1.SRTCaller,
+				RemoteHost:          remoteHost,
+				RemotePort:          9000,
+				LatencyMs:           120,
+				PBKeyLen:            32,
+				PassphraseSecretRef: corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: "srt-pass"}, Key: "passphrase"},
+			},
+		}},
+	}}
+	return rb
+}
+
+// TestReconcileWritesPathHealth verifies that a healthy SRT path is written
+// to status.pathHealth[] and the runbook reaches Live.
+func TestReconcileWritesPathHealth(t *testing.T) {
+	rb := testRunbookWithSRT("show", "mixer", "203.0.113.10")
+	rb.Spec.NAPs = []zeusv1.NAPPlacement{{Name: "show-mixer", NAP: "mixer"}}
+
+	b := &fakeBridge{ph: zeusv1.PathHealth{Name: "primary", Transport: "srt", State: "up", RTTMs: 42}}
+	r := newReconcilerWithBridge(t, b, rb, testNAP("mixer", "Validated", 1), testPod("show-mixer"), testSecret("srt-pass"))
+
+	out, err := reconcileRunbook(t, r, "show")
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if out.Status.Phase != "Live" {
+		t.Fatalf("phase = %q, want Live", out.Status.Phase)
+	}
+	if len(out.Status.PathHealth) != 1 {
+		t.Fatalf("pathHealth len = %d, want 1", len(out.Status.PathHealth))
+	}
+	ph := out.Status.PathHealth[0]
+	if ph.State != "up" {
+		t.Fatalf("path state = %q, want up", ph.State)
+	}
+	if ph.RTTMs != 42 {
+		t.Fatalf("path rttMs = %d, want 42", ph.RTTMs)
+	}
+}
+
+// TestReconcileDegradesOnPathDown verifies that a down SRT path degrades the
+// runbook instead of letting it reach Live.
+func TestReconcileDegradesOnPathDown(t *testing.T) {
+	rb := testRunbookWithSRT("show", "mixer", "203.0.113.10")
+	rb.Spec.NAPs = []zeusv1.NAPPlacement{{Name: "show-mixer", NAP: "mixer"}}
+
+	b := &fakeBridge{ph: zeusv1.PathHealth{Name: "primary", Transport: "srt", State: "down"}, err: errConnectionRefused}
+	r := newReconcilerWithBridge(t, b, rb, testNAP("mixer", "Validated", 1), testPod("show-mixer"), testSecret("srt-pass"))
+
+	out, err := reconcileRunbook(t, r, "show")
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if out.Status.Phase != "Degraded" {
+		t.Fatalf("phase = %q, want Degraded", out.Status.Phase)
+	}
+	if out.Status.Conditions[0].Reason != "PathDown" {
+		t.Fatalf("reason = %q, want PathDown", out.Status.Conditions[0].Reason)
+	}
+}
+
+var errConnectionRefused = errors.New("connection refused")
+
+// testSecret returns a Secret with a passphrase long enough to pass the
+// reconciler's >= 20 character check.
+func testSecret(name string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		Data:       map[string][]byte{"passphrase": []byte("this-is-a-test-passphrase-20-chars")},
+	}
+}
+

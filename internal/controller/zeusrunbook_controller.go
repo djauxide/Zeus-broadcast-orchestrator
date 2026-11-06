@@ -22,6 +22,7 @@ import (
 
 	zeusv1 "github.com/zeus-broadcast/zeus-kernel/api/v1alpha1"
 	"github.com/zeus-broadcast/zeus-kernel/internal/fabric"
+	"github.com/zeus-broadcast/zeus-kernel/internal/transport/srt"
 )
 
 const zeusFinalizer = "zeus.broadcast/finalizer"
@@ -30,6 +31,7 @@ type ZeusRunbookReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 	Fabric fabric.Client
+	Bridge srt.Bridge
 }
 
 func (r *ZeusRunbookReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -146,7 +148,59 @@ func (r *ZeusRunbookReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 	}
 
+	// Phase 2: measure real path health for each SRT contribution path and
+	// write it to status.pathHealth[]. A down path degrades the runbook
+	// instead of letting it reach Live on a broken WAN leg.
+	pathHealth, anyDown := r.computePathHealth(ctx, rb)
+	if len(pathHealth) > 0 {
+		rb.Status.PathHealth = pathHealth
+		if anyDown {
+			return r.setPhase(ctx, &rb, "Degraded", "PathDown",
+				"one or more SRT contribution paths are down")
+		}
+	}
+
 	return r.setPhase(ctx, &rb, "Live", "WorkflowReady", "")
+}
+
+// computePathHealth measures the health of each SRT contribution path using
+// the bridge. It returns the path health entries and whether any path is down.
+// Non-SRT paths and runbooks without a bridge are skipped.
+func (r *ZeusRunbookReconciler) computePathHealth(ctx context.Context, rb zeusv1.ZeusRunbook) ([]zeusv1.PathHealth, bool) {
+	if rb.Spec.Ingress == nil || rb.Spec.Ingress.Contribution == nil || r.Bridge == nil {
+		return nil, false
+	}
+	var paths []zeusv1.PathHealth
+	anyDown := false
+	for _, p := range rb.Spec.Ingress.Contribution.Paths {
+		if p.SRT == nil {
+			continue
+		}
+		name := p.Name
+		if name == "" {
+			name = p.SRT.RemoteHost
+		}
+		ph, err := r.Bridge.Health(ctx)
+		if err != nil {
+			ph = zeusv1.PathHealth{
+				Name:      name,
+				Transport: "srt",
+				State:     "down",
+			}
+			anyDown = true
+		} else {
+			ph.Name = name
+			ph.Transport = "srt"
+			if ph.State == "" {
+				ph.State = "down"
+			}
+			if ph.State == "down" {
+				anyDown = true
+			}
+		}
+		paths = append(paths, ph)
+	}
+	return paths, anyDown
 }
 
 // findAppPod returns the name of the oldest non-terminating pod carrying

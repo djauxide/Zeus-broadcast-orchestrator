@@ -16,6 +16,7 @@ import (
 	zeusv1 "github.com/zeus-broadcast/zeus-kernel/api/v1alpha1"
 	"github.com/zeus-broadcast/zeus-kernel/internal/controller"
 	"github.com/zeus-broadcast/zeus-kernel/internal/fabric"
+	"github.com/zeus-broadcast/zeus-kernel/internal/transport/srt"
 )
 
 var (
@@ -61,6 +62,7 @@ func main() {
 	if err := (&controller.ZeusRunbookReconciler{
 		Client: mgr.GetClient(), Scheme: mgr.GetScheme(),
 		Fabric: fabric.NewRealClient(mgr.GetClient()),
+		Bridge: srt.NewBridge(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create Runbook controller")
 		os.Exit(1)
