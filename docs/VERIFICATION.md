@@ -1,6 +1,6 @@
 # Verification Report — Zeus MVP on a local kind cluster
 
-Date: 2026-11-05
+Date: 2026-11-06
 Spec: `README.md` (section 7, Verification Gates)
 
 ## Environment
@@ -13,7 +13,7 @@ Spec: `README.md` (section 7, Verification Gates)
 | Go toolchain (gates 1–3) | go1.26.10 linux/amd64 |
 | Charts | zeus-crds 1.0.0, zeus-kernel 0.1.0 (release revision 5) |
 | Dependencies | cert-manager v1.21.3, mxl-k8s 1.0.0-rc.9 (namespace `mxl-system`) |
-| Kernel image | `ghcr.io/zeus-broadcast/zeus-kernel:0.1.0` (digest `e8833d3bc390…`) |
+| Kernel image | `ghcr.io/zeus-broadcast/zeus-kernel:0.1.0` (digest `6b56916832bb…`) |
 | Verification NAP | `localhost/zeus-nap-probe:0.1.0` (test-only, see E-017) |
 
 Gates 1–3 are compiled and executed on Linux: controller-runtime v0.25.0 does not
@@ -56,6 +56,23 @@ unmodified `examples/mvp-single-path.yaml`.
 `PathHealth` is a first-class status field (D-006) but no MVP code path fills it:
 fabric feedback (mxl-k8s receiver status) is Phase 2. The gate as written is
 therefore not fully satisfiable without fabricating status.
+
+### NAP watch verification (correctness hardening)
+
+A late-validated NAP must wake a runbook that is already waiting on it. This
+was verified live on the cluster:
+
+1. `kubectl apply` runbook `probe-watch` referencing NAP `probe-watch-nap`
+   which does not yet exist → `phase: Reconciling`, `reason: NAPNotFound`.
+2. `kubectl apply` NAP `probe-watch-nap` (probe image, valid signature) → NAP
+   controller validates it (`phase: Validated`).
+3. The NAP watch (`runbooksForNAP` + `Watches`) maps the NAP event to
+   `probe-watch`, which is re-reconciled without the runbook being touched →
+   `phase: Live`, `reason: WorkflowReady`.
+
+This confirms a runbook wakes when its NAP becomes Validated, and that a NAP
+spec change (`metadata.generation` bump) triggers re-validation rather than
+keeping a stale verdict.
 
 ### Gate 10 details
 

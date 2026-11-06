@@ -75,3 +75,19 @@ The Windows host has 8 GB RAM and the Podman VM 3.8 GB. Running the kind cluster
 a full `go test ./...` envtest control plane at the same time exhausts the host and
 causes API timeouts and probe-driven restarts. Gate runs 1–3 are executed with the
 kind node stopped; cluster verification runs when no compiler is active.
+
+## D-016: NAP watch + generation-aware revalidation
+A runbook waiting on a NAP must not stall until the runbook itself is edited. The
+`ZeusRunbookReconciler` watches `ZeusApplicationPackage` and maps events to
+referencing runbooks via `runbooksForNAP`, so a NAP becoming `Validated` (or its
+image/signature changing) re-wakes the runbook. The NAP reconciler re-validates
+when `metadata.generation != status.observedGen` and records `observedGen` on both
+acceptance and rejection. Verified live: a runbook referencing a not-yet-existent
+NAP sits `Reconciling/NAPNotFound`, then transitions to `Live/WorkflowReady` when
+the NAP is created and validated, with no change to the runbook.
+
+## D-017: Webhook hitless/mergeMode consistency
+The webhook's hitless rules are selected by `Contribution.MergeMode`, not
+`Redundancy` (the spec example sets both to `hitless`). Test helpers must set both
+fields explicitly; a helper that hardcodes `MergeMode: "switchover"` while setting
+`Redundancy: "hitless"` would never exercise the hitless validation path.
