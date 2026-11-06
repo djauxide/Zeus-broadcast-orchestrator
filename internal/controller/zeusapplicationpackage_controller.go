@@ -23,12 +23,15 @@ func (r *ZeusApplicationPackageReconciler) Reconcile(ctx context.Context, req ct
 	if err := r.Get(ctx, req.NamespacedName, &nap); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	if nap.Status.Phase != "" {
+	// Re-validate when the spec changes. Without the generation check a NAP
+	// that was edited (new image or signature) keeps its old verdict forever.
+	if nap.Status.Phase != "" && nap.Status.ObservedGen == nap.Generation {
 		return ctrl.Result{}, nil
 	}
 
 	reject := func(reason string) (ctrl.Result, error) {
 		nap.Status.Phase = "Rejected"
+		nap.Status.ObservedGen = nap.Generation
 		logger.Info("nap_rejected", "nap", nap.Name, "reason", reason)
 		return ctrl.Result{}, r.Status().Update(ctx, &nap)
 	}

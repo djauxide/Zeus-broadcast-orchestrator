@@ -16,7 +16,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	zeusv1 "github.com/zeus-broadcast/zeus-kernel/api/v1alpha1"
 	"github.com/zeus-broadcast/zeus-kernel/internal/fabric"
@@ -257,7 +259,38 @@ func (r *ZeusRunbookReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&zeusv1.ZeusRunbook{}).
 		Owns(&appsv1.Deployment{}).
+		// A runbook that is waiting on a NAP must be re-reconciled when that
+		// NAP is validated (or its image/signature changes). Without this
+		// watch it would stay in Reconciling until the runbook itself changed.
+		Watches(&zeusv1.ZeusApplicationPackage{}, handler.EnqueueRequestsFromMapFunc(r.runbooksForNAP)).
 		Complete(r)
+}
+
+// runbooksForNAP maps a NAP event to every runbook in the same namespace that
+// references it by name.
+func (r *ZeusRunbookReconciler) runbooksForNAP(ctx context.Context, obj client.Object) []reconcile.Request {
+	nap, ok := obj.(*zeusv1.ZeusApplicationPackage)
+	if !ok {
+		return nil
+	}
+	var runbooks zeusv1.ZeusRunbookList
+	if err := r.List(ctx, &runbooks, client.InNamespace(nap.Namespace)); err != nil {
+		log.FromContext(ctx).Error(err, "list runbooks for NAP", "nap", nap.Name)
+		return nil
+	}
+	var requests []reconcile.Request
+	for i := range runbooks.Items {
+		rb := &runbooks.Items[i]
+		for _, placement := range rb.Spec.NAPs {
+			if placement.NAP == nap.Name {
+				requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
+					Namespace: rb.Namespace, Name: rb.Name,
+				}})
+				break
+			}
+		}
+	}
+	return requests
 }
 
 func int32Ptr(i int32) *int32                                    { return &i }
