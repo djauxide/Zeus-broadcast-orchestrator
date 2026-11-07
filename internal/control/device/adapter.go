@@ -123,10 +123,4 @@ func init() {
 	RegisterDeviceAdapter("graphics", func(config DeviceConfig, logger *log.Logger) DeviceControlAdapter {
 		return NewGraphicsAdapter(config, logger)
 	})
-	RegisterDeviceAdapter("ampp", func(config DeviceConfig, logger *log.Logger) DeviceControlAdapter {
-		return NewAMPPAdapter(config, logger)
-	})
-	RegisterDeviceAdapter("nep", func(config DeviceConfig, logger *log.Logger) DeviceControlAdapter {
-		return NewNEPAdapter(config, logger)
-	})
 }
