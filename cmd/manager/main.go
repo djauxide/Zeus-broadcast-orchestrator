@@ -62,7 +62,7 @@ func main() {
 	if err := (&controller.ZeusRunbookReconciler{
 		Client: mgr.GetClient(), Scheme: mgr.GetScheme(),
 		Fabric: fabric.NewRealClient(mgr.GetClient()),
-		Bridge: srt.NewBridge(),
+		BridgeFactory: srt.NewBridge,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create Runbook controller")
 		os.Exit(1)

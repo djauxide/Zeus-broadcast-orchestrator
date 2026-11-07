@@ -86,7 +86,7 @@
 
   <div class="grid cards" style="margin-top:24px">
     <div class="card"><div class="k">Kernel replicas</div><div class="v">2/2 <small>ready · 0 restarts</small></div></div>
-    <div class="card"><div class="k">Verification gates</div><div class="v">10 <small>pass · 2 partial</small></div></div>
+    <div class="card"><div class="k">Verification gates</div><div class="v">11 <small>pass · 1 partial</small></div></div>
     <div class="card"><div class="k">CRDs installed</div><div class="v">5 <small>zeus + mxl-k8s</small></div></div>
     <div class="card"><div class="k">Runbooks live</div><div class="v">2 <small>probe fixtures</small></div></div>
   </div>
@@ -139,7 +139,7 @@
       <tr><td class="num">5</td><td>Dual-path forward-compat</td><td><span class="badge pass">PASS</span></td><td>server dry-run accepted <code>tier-one-dual-path</code></td></tr>
       <tr><td class="num">6</td><td>Invalid SRT rejected</td><td><span class="badge pass">PASS</span></td><td><code>srt.remoteHost: Required value</code></td></tr>
       <tr><td class="num">7</td><td>Passphrase secrecy</td><td><span class="badge pass">PASS</span></td><td>only <code>passphraseSecretRef</code> name/key in the object</td></tr>
-      <tr><td class="num">8</td><td>End-to-end</td><td><span class="badge partial">PARTIAL</span></td><td><code>phase: Live</code>; receiver bound to the live pod; <code>PathHealth</code> not written by the MVP</td></tr>
+      <tr><td class="num">8</td><td>End-to-end</td><td><span class="badge pass">PASS</span></td><td><code>phase: Live</code>; receiver bound to the live pod; <code>pathHealth</code> shows real measured <code>state: up, rttMs: 342</code></td></tr>
       <tr><td class="num">9</td><td>Clean teardown</td><td><span class="badge pass">PASS</span></td><td>receiver + deployment + flow mirror gone after delete</td></tr>
       <tr><td class="num">10</td><td>Metrics</td><td><span class="badge pass">PASS</span></td><td><code>zeus_reconcile_errors_total</code>, <code>zeus_runbook_phase</code></td></tr>
       <tr><td class="num">11</td><td>Audit log</td><td><span class="badge pass">PASS</span></td><td><code>phase_transition</code> JSON with <code>causal_chain_id</code></td></tr>
@@ -165,7 +165,6 @@
 
   <h2><span class="num">04</span>Honest limitations</h2>
   <ul class="limits">
-    <li><b>Gate 8 is partial:</b> <code>PathHealth[0].state: up</code> is specified but no MVP code writes it. Fabric feedback is Phase 2; the gate is not fabricated.</li>
     <li><b>Gate 12 is a demonstration:</b> draining the only node would evict the API server, etcd and DNS. Verified with PDB state plus a live pod eviction instead.</li>
     <li><b>Fabric is bound, not flowing:</b> <code>MxlReceiver</code> points at the correct pod, but without a real MXL producer there is no <code>MxlFlowMirror</code> and the receiver stays <code>Pending</code> in mxl-k8s terms.</li>
     <li><b>No real SRT/RIST:</b> transport code is scaffolding; the webhook rejects malformed SRT but nothing encrypts media yet.</li>
@@ -174,7 +173,7 @@
 
   <footer>
     <span>Spec: README.md §7 · Evidence: docs/VERIFICATION.md · Deviations: docs/ERRATA.md</span>
-    <span>zeus-kernel 0.1.0 · image 6b56916832bb</span>
+    <span>zeus-kernel 0.1.0 · image b56975a856ac</span>
   </footer>
 </div>
 </body>

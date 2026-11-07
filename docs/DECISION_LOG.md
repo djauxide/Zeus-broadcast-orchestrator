@@ -100,5 +100,7 @@ not echoing, down on connection failure. Without libsrt this is TCP-level
 connectivity, not SRT ARQ statistics; loss/jitter are 0 until an SRT library
 binding is integrated. The reconciler writes status.pathHealth[] for each
 SRT path and degrades the runbook to Degraded/PathDown when any path is
-down. Verified with unit tests against a real TCP echo listener; live cluster
-verification pending.
+down. Verified with unit tests against a real TCP echo listener, and live on
+kind (2026-11-07): runbook with SRT path to echo server reached Live with
+pathHealth [{state: up, rttMs: 342}]; runbook with unreachable peer degraded
+to Degraded/PathDown with {state: down}.

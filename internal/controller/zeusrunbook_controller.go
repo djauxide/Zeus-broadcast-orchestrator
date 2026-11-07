@@ -29,9 +29,9 @@ const zeusFinalizer = "zeus.broadcast/finalizer"
 
 type ZeusRunbookReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	Fabric fabric.Client
-	Bridge srt.Bridge
+	Scheme        *runtime.Scheme
+	Fabric        fabric.Client
+	BridgeFactory func() srt.Bridge
 }
 
 func (r *ZeusRunbookReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -164,10 +164,12 @@ func (r *ZeusRunbookReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 // computePathHealth measures the health of each SRT contribution path using
-// the bridge. It returns the path health entries and whether any path is down.
-// Non-SRT paths and runbooks without a bridge are skipped.
+// the bridge. A new bridge is started per path (with the path's SRT spec and
+// passphrase resolved from the referenced Secret), Health is measured, then
+// the bridge is stopped. Non-SRT paths and runbooks without a bridge factory
+// are skipped.
 func (r *ZeusRunbookReconciler) computePathHealth(ctx context.Context, rb zeusv1.ZeusRunbook) ([]zeusv1.PathHealth, bool) {
-	if rb.Spec.Ingress == nil || rb.Spec.Ingress.Contribution == nil || r.Bridge == nil {
+	if rb.Spec.Ingress == nil || rb.Spec.Ingress.Contribution == nil || r.BridgeFactory == nil {
 		return nil, false
 	}
 	var paths []zeusv1.PathHealth
@@ -180,23 +182,44 @@ func (r *ZeusRunbookReconciler) computePathHealth(ctx context.Context, rb zeusv1
 		if name == "" {
 			name = p.SRT.RemoteHost
 		}
-		ph, err := r.Bridge.Health(ctx)
-		if err != nil {
-			ph = zeusv1.PathHealth{
-				Name:      name,
-				Transport: "srt",
-				State:     "down",
-			}
+		ph := zeusv1.PathHealth{Name: name, Transport: "srt", State: "down"}
+
+		// Resolve the passphrase from the referenced Secret.
+		var sec corev1.Secret
+		if err := r.Get(ctx, types.NamespacedName{Namespace: rb.Namespace, Name: p.SRT.PassphraseSecretRef.Name}, &sec); err != nil {
+			paths = append(paths, ph)
 			anyDown = true
-		} else {
-			ph.Name = name
-			ph.Transport = "srt"
-			if ph.State == "" {
-				ph.State = "down"
-			}
-			if ph.State == "down" {
-				anyDown = true
-			}
+			continue
+		}
+		passphrase, ok := sec.Data[p.SRT.PassphraseSecretRef.Key]
+		if !ok {
+			paths = append(paths, ph)
+			anyDown = true
+			continue
+		}
+
+		// Start a fresh bridge for this path, measure health, then stop it.
+		bridge := r.BridgeFactory()
+		if err := bridge.Start(ctx, *p.SRT, passphrase); err != nil {
+			paths = append(paths, ph)
+			anyDown = true
+			continue
+		}
+		defer bridge.Stop(ctx)
+
+		h, err := bridge.Health(ctx)
+		if err != nil {
+			paths = append(paths, ph)
+			anyDown = true
+			continue
+		}
+		ph = h
+		ph.Name = name
+		if ph.State == "" {
+			ph.State = "down"
+		}
+		if ph.State == "down" {
+			anyDown = true
 		}
 		paths = append(paths, ph)
 	}

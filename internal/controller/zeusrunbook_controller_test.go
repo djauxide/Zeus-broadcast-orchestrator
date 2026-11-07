@@ -205,7 +205,7 @@ func newReconcilerWithBridge(t *testing.T, b srt.Bridge, objs ...client.Object) 
 		WithStatusSubresource(&zeusv1.ZeusRunbook{}, &zeusv1.ZeusApplicationPackage{}).
 		WithObjects(objs...).
 		Build()
-	return &ZeusRunbookReconciler{Client: c, Scheme: s, Fabric: fabric.NewFakeClient(), Bridge: b}
+	return &ZeusRunbookReconciler{Client: c, Scheme: s, Fabric: fabric.NewFakeClient(), BridgeFactory: func() srt.Bridge { return b }}
 }
 
 func testRunbookWithSRT(name, nap, remoteHost string) *zeusv1.ZeusRunbook {
