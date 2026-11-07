@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 
 	zeusv1 "github.com/zeus-broadcast/zeus-kernel/api/v1alpha1"
 	"github.com/zeus-broadcast/zeus-kernel/internal/fabric"
+	"github.com/zeus-broadcast/zeus-kernel/internal/transport/hitless"
 	"github.com/zeus-broadcast/zeus-kernel/internal/transport/srt"
 )
 
@@ -32,6 +34,9 @@ type ZeusRunbookReconciler struct {
 	Scheme        *runtime.Scheme
 	Fabric        fabric.Client
 	BridgeFactory func() srt.Bridge
+	// HitlessMerger manages bridges for dual-path hitless merge. When non-nil,
+	// the reconciler uses it instead of per-path Start/Health/Stop.
+	HitlessMerger *hitless.Merger
 }
 
 func (r *ZeusRunbookReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -54,7 +59,13 @@ func (r *ZeusRunbookReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 					return ctrl.Result{}, err
 				}
 			}
-			controllerutil.RemoveFinalizer(&rb, zeusFinalizer)
+			// Phase 2: stop hitless merger bridges on teardown.
+		if r.HitlessMerger != nil {
+			if err := r.HitlessMerger.StopAll(ctx); err != nil {
+				logger.Error(err, "stop hitless merger", "runbook", rb.Name)
+			}
+		}
+		controllerutil.RemoveFinalizer(&rb, zeusFinalizer)
 			return ctrl.Result{}, r.Update(ctx, &rb)
 		}
 		return ctrl.Result{}, nil
@@ -67,12 +78,14 @@ func (r *ZeusRunbookReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 	}
 
-	// Capability guard BEFORE any resource lookup: dual-path merge is Phase 2.
+	// Phase 2: dual-path hitless merge is now supported. When MergeMode is
+	// "hitless", the reconciler manages all contribution paths through the
+	// HitlessMerger instead of rejecting them.
 	if rb.Spec.Ingress != nil && rb.Spec.Ingress.Contribution != nil {
 		c := rb.Spec.Ingress.Contribution
-		if c.Redundancy == "hitless" || len(c.Paths) > 1 {
-			return r.setPhase(ctx, &rb, "Degraded", "DualPathUnsupported",
-				"dual-path merge is Phase 2; apply examples/mvp-single-path.yaml instead")
+		if c.Redundancy == "hitless" && r.HitlessMerger == nil {
+			return r.setPhase(ctx, &rb, "Degraded", "HitlessMergerNotConfigured",
+				"hitless merge requires the controller to be started with a HitlessMerger")
 		}
 	}
 
@@ -148,15 +161,51 @@ func (r *ZeusRunbookReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 	}
 
-	// Phase 2: measure real path health for each SRT contribution path and
-	// write it to status.pathHealth[]. A down path degrades the runbook
-	// instead of letting it reach Live on a broken WAN leg.
-	pathHealth, anyDown := r.computePathHealth(ctx, rb)
-	if len(pathHealth) > 0 {
-		rb.Status.PathHealth = pathHealth
-		if anyDown {
+	// Phase 2: measure real path health for each contribution path and
+	// write it to status.pathHealth[]. In hitless mode, bridges are managed
+	// by the HitlessMerger and kept running across reconciles. In single-path
+	// mode, a bridge is started, probed, and stopped per reconcile.
+	isHitless := rb.Spec.Ingress != nil &&
+		rb.Spec.Ingress.Contribution != nil &&
+		rb.Spec.Ingress.Contribution.Redundancy == "hitless"
+
+	if isHitless {
+		if err := r.ensureHitlessBridges(ctx, &rb); err != nil {
+			return r.setPhase(ctx, &rb, "Degraded", "HitlessBridgeError", err.Error())
+		}
+		if err := r.HitlessMerger.MeasureHealth(ctx); err != nil {
+			return r.setPhase(ctx, &rb, "Degraded", "HitlessHealthError", err.Error())
+		}
+		merged, err := r.HitlessMerger.Health(ctx)
+		if err != nil {
+			return r.setPhase(ctx, &rb, "Degraded", "HitlessHealthError", err.Error())
+		}
+		rb.Status.PathHealth = []zeusv1.PathHealth{merged}
+		// Also include per-path health for visibility.
+		for _, p := range rb.Spec.Ingress.Contribution.Paths {
+			name := p.Name
+			if name == "" {
+				name = p.SRT.RemoteHost
+				if p.RIST != nil {
+					name = p.RIST.RemoteHost
+				}
+			}
+			if ph, ok := r.HitlessMerger.PathHealth(name); ok {
+				rb.Status.PathHealth = append(rb.Status.PathHealth, ph)
+			}
+		}
+		if merged.State == "down" {
 			return r.setPhase(ctx, &rb, "Degraded", "PathDown",
-				"one or more SRT contribution paths are down")
+				"all hitless merge paths are down")
+		}
+	} else {
+		pathHealth, anyDown := r.computePathHealth(ctx, rb)
+		if len(pathHealth) > 0 {
+			rb.Status.PathHealth = pathHealth
+			if anyDown {
+				return r.setPhase(ctx, &rb, "Degraded", "PathDown",
+					"one or more SRT contribution paths are down")
+			}
 		}
 	}
 
@@ -224,6 +273,64 @@ func (r *ZeusRunbookReconciler) computePathHealth(ctx context.Context, rb zeusv1
 		paths = append(paths, ph)
 	}
 	return paths, anyDown
+}
+
+// ensureHitlessBridges starts all bridges for hitless merge paths if they
+// haven't been started yet. Bridges are kept running across reconciles so
+// the merger can continuously measure and aggregate their health. Paths
+// that are down are restarted to recover from transient connection failures.
+func (r *ZeusRunbookReconciler) ensureHitlessBridges(ctx context.Context, rb *zeusv1.ZeusRunbook) error {
+	if r.HitlessMerger == nil {
+		return errors.New("hitless merger not configured")
+	}
+	c := rb.Spec.Ingress.Contribution
+	for _, p := range c.Paths {
+		if p.SRT != nil {
+			// If the path exists and is up, skip it.
+			if ph, ok := r.HitlessMerger.PathHealth(p.Name); ok && ph.State == "up" {
+				continue
+			}
+			// Remove any existing (possibly broken) bridge and re-add.
+			if err := r.HitlessMerger.RemovePath(ctx, p.Name); err != nil {
+				// Ignore "unknown path" errors - the path simply wasn't registered yet.
+				if _, ok := err.(*hitless.UnknownPathError); !ok {
+					return err
+				}
+			}
+			var sec corev1.Secret
+			if err := r.Get(ctx, types.NamespacedName{Namespace: rb.Namespace, Name: p.SRT.PassphraseSecretRef.Name}, &sec); err != nil {
+				return err
+			}
+			passphrase, ok := sec.Data[p.SRT.PassphraseSecretRef.Key]
+			if !ok {
+				return errors.New("srt: passphrase key not found in secret " + p.SRT.PassphraseSecretRef.Name)
+			}
+			if err := r.HitlessMerger.AddSRTPath(ctx, p.Name, *p.SRT, passphrase); err != nil {
+				return err
+			}
+		} else if p.RIST != nil {
+			if ph, ok := r.HitlessMerger.PathHealth(p.Name); ok && ph.State == "up" {
+				continue
+			}
+			if err := r.HitlessMerger.RemovePath(ctx, p.Name); err != nil {
+				if _, ok := err.(*hitless.UnknownPathError); !ok {
+					return err
+				}
+			}
+			var sec corev1.Secret
+			if err := r.Get(ctx, types.NamespacedName{Namespace: rb.Namespace, Name: p.RIST.PassphraseSecretRef.Name}, &sec); err != nil {
+				return err
+			}
+			passphrase, ok := sec.Data[p.RIST.PassphraseSecretRef.Key]
+			if !ok {
+				return errors.New("rist: passphrase key not found in secret " + p.RIST.PassphraseSecretRef.Name)
+			}
+			if err := r.HitlessMerger.AddRISTPath(ctx, p.Name, *p.RIST, passphrase); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // findAppPod returns the name of the oldest non-terminating pod carrying
