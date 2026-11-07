@@ -166,10 +166,10 @@ These were requested by the user but are **Phase 3** in the spec:
 | 7 | PathHealth | ✅ COMPLETE | SRT bridge `Health()`, reconciler path-health writer, Gate 8 PASS with live evidence (`rttMs: 342`) |
 | 8 | Dual-path | ✅ COMPLETE | Removed `DualPathUnsupported` guard, RIST bridge, hitless merger, live verification with both paths `up` |
 | 9 | NMOS | ✅ COMPLETE | IS-04 discovery (ListNodes, ListResources, FindSender), NAP sender matching, IS-05 client, unit-tested |
-| 10 | Monitoring | ⬜ PENDING | Expanded metrics, ServiceMonitor, Grafana, alerts, tracing |
+| 10 | Monitoring | ✅ COMPLETE | Expanded metrics (path health, NAP validation, MxL receiver, NMOS duration), ServiceMonitor, PrometheusRule alerts (7), Grafana dashboard (8 panels), Service exposes :8080/metrics |
 | 11 | Drain resilience | ⬜ PENDING | Multi-node kind, PDB, live drain, Gate 12 PASS |
 | 12 | Hardening | ⬜ PENDING | MCP servers, cross-site scheduler probe, Agent Plane L0, regression tests, full gate re-run |
 
-**Week 9 evidence:** Unit tests verify IS-04 sender discovery (match found, not found, registry error, no client configured). Live cluster verification pending - requires deploying an NMOS registry (nmos-cpp/easy-nmos) in kind and configuring `--nmos-registry-url` flag.
+**Week 10 evidence:** All unit tests pass (controller, api/v1alpha1, transport/srt/rist/hitless, nmos). go vet clean; full build clean. Grafana dashboard has 8 panels. 7 Prometheus alerting rules defined.
 
-**Next step:** Week 10 (Monitoring) or Week 11 (Gate 12 drain resilience on multi-node kind).
+**Next step:** Week 11 (Gate 12 drain resilience on multi-node kind).
