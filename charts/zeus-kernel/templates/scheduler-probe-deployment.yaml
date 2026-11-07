@@ -1,0 +1,49 @@
+{{- if .Values.schedulerProbe.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zeus-scheduler-probe
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: zeus-scheduler-probe
+spec:
+  replicas: {{ .Values.schedulerProbe.replicaCount }}
+  selector:
+    matchLabels:
+      app: zeus-scheduler-probe
+  template:
+    metadata:
+      labels:
+        app: zeus-scheduler-probe
+    spec:
+      serviceAccountName: zeus-kernel
+      containers:
+        - name: scheduler-probe
+          image: "{{ .Values.schedulerProbe.image.repository }}:{{ .Values.schedulerProbe.image.tag }}"
+          imagePullPolicy: {{ .Values.schedulerProbe.image.pullPolicy }}
+          args:
+            - --metrics-bind-address=:8080
+            - --health-probe-bind-address=:8081
+            - --probe-interval={{ .Values.schedulerProbe.probeInterval }}
+            {{- if .Values.schedulerProbe.sites }}
+            - --sites={{ .Values.schedulerProbe.sites }}
+            {{- end }}
+          resources:
+{{ toYaml .Values.schedulerProbe.resources | indent 12 }}
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8081 }
+            initialDelaySeconds: 5
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8081 }
+            initialDelaySeconds: 5
+            timeoutSeconds: 3
+          securityContext:
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+      {{- with .Values.schedulerProbe.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+{{- end }}

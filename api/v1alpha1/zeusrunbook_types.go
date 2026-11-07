@@ -70,10 +70,11 @@ type PathHealth struct {
 }
 
 type ZeusRunbookStatus struct {
-	Phase      string             `json:"phase,omitempty"`
-	ActiveNAPs []string           `json:"activeNAPs,omitempty"`
-	PathHealth []PathHealth       `json:"pathHealth,omitempty"`
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
+	Phase         string             `json:"phase,omitempty"`
+	ActiveNAPs    []string           `json:"activeNAPs,omitempty"`
+	PathHealth    []PathHealth       `json:"pathHealth,omitempty"`
+	Conditions    []metav1.Condition `json:"conditions,omitempty"`
+	SuggestedAction string          `json:"suggestedAction,omitempty"`
 }
 
 // +kubebuilder:object:root=true

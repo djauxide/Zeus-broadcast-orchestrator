@@ -436,6 +436,7 @@ func (r *ZeusRunbookReconciler) setPhase(ctx context.Context, rb *zeusv1.ZeusRun
 	}
 	prevPhase := rb.Status.Phase
 	rb.Status.Phase = phase
+	rb.Status.SuggestedAction = suggestedActionFor(phase, reason)
 	rb.Status.Conditions = []metav1.Condition{{
 		Type:               "Ready",
 		Status:             metav1.ConditionTrue,
@@ -458,6 +459,54 @@ func (r *ZeusRunbookReconciler) setPhase(ctx context.Context, rb *zeusv1.ZeusRun
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, err
 	}
 	return ctrl.Result{}, nil
+}
+
+// suggestedActionFor returns a read-only Agent Plane L0 suggestion based on
+// the current phase and reason. No execution is performed - this is purely
+// informational for agents and operators.
+func suggestedActionFor(phase, reason string) string {
+	switch phase {
+	case "Live":
+		return "No action needed"
+	case "Reconciling":
+		switch reason {
+		case "NAPNotFound":
+			return "Create the referenced NAP (ZeusApplicationPackage)"
+		case "NAPNotValidated":
+			return "Wait for NAP validation to complete"
+		case "PodNotFound":
+			return "Wait for deployment to create a pod"
+		case "SecretNotFound":
+			return "Create the referenced passphrase secret"
+		case "PassphraseTooShort":
+			return "Regenerate passphrase (minimum 20 characters)"
+		default:
+			return "Wait for reconciliation to complete"
+		}
+	case "Degraded":
+		switch reason {
+		case "PathDown":
+			return "Check SRT/RIST path connectivity"
+		case "FabricNotInstalled":
+			return "Install the mxl-k8s chart"
+		case "DeployError":
+			return "Check deployment configuration and image availability"
+		case "DualPathUnsupported":
+			return "Use single-path configuration (MVP limitation)"
+		case "HitlessBridgeError":
+			return "Check hitless bridge configuration"
+		case "HitlessHealthError":
+			return "Check hitless path health"
+		case "HitlessMergerNotConfigured":
+			return "Enable hitless merger in controller configuration"
+		default:
+			return "Review degraded state and resolve underlying issue"
+		}
+	case "Rejected":
+		return "Review rejection reason and update NAP spec"
+	default:
+		return ""
+	}
 }
 
 func (r *ZeusRunbookReconciler) SetupWithManager(mgr ctrl.Manager) error {

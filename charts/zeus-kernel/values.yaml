@@ -59,3 +59,72 @@ monitoring:
     enabled: false
     endpoint: ""
     serviceName: "zeus-kernel"
+
+# MCP server configuration (Phase 2 Week 12)
+# MCP servers are separate Deployments that expose Zeus functionality
+# as MCP tools for agent/client consumption. They do not replace the
+# kernel; they are client interfaces that talk to the K8s API.
+# All MCP servers are disabled by default; enable individually as needed.
+mcp:
+  registry:
+    enabled: false
+    replicaCount: 1
+    image:
+      repository: ghcr.io/zeus-broadcast/zeus-mcp-registry
+      tag: "0.1.0"
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    nmosRegistryURL: ""
+  fabric:
+    enabled: false
+    replicaCount: 1
+    image:
+      repository: ghcr.io/zeus-broadcast/zeus-mcp-fabric
+      tag: "0.1.0"
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+  runbook:
+    enabled: false
+    replicaCount: 1
+    image:
+      repository: ghcr.io/zeus-broadcast/zeus-mcp-runbook
+      tag: "0.1.0"
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+# Cross-site scheduler probe (Phase 2 Week 12)
+# Probes network latency between sites for multi-site placement cost model.
+schedulerProbe:
+  enabled: false
+  replicaCount: 1
+  image:
+    repository: ghcr.io/zeus-broadcast/zeus-scheduler-probe
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  sites: ""
+  probeInterval: "30s"
