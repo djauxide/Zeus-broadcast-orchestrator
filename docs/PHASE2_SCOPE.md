@@ -182,4 +182,29 @@ These were requested by the user but are **Phase 3** in the spec:
 - Scheduler probe: TCP latency probing between sites
 - Agent Plane L0: status.suggestedAction field with read-only suggestions
 
-**Next step:** Phase 3 planning (multiviewers, SW-P-08/Ember+ adapters, runbook template library).
+**Next step:** Phase 3 (Ecosystem, Weeks 13-18).
+
+---
+
+## Phase 3 — Ecosystem (Weeks 13-18) — In Progress
+
+Per the README spec, Phase 3 includes:
+- NAP conformance suite (CLI + CI action) — **COMPLETE** (Week 13)
+- Self-service NAP registry (staging + production) — pending
+- Runbook template library (event classes) — pending
+- 15+ NAP-certified applications — pending
+- Canonical/legacy routing adapter (SW-P-08, Ember+) — pending
+- Device control adapters (camera, audio, replay, graphics) — pending
+
+### Phase 3 progress
+
+| Item | Status | Notes |
+|------|--------|-------|
+| NAP conformance suite | ✅ COMPLETE | `cmd/zeus-nap-conformance` with valid/invalid examples, --json output |
+| Self-service NAP registry | ⬜ PENDING | CRD + controller for NAP registration and approval workflow |
+| Runbook template library | ⬜ PENDING | Template library for common event classes |
+| 15+ NAP-certified applications | ⬜ PENDING | Applications validated against conformance suite |
+| SW-P-08 / Ember+ routing adapters | ⬜ PENDING | Legacy routing protocol adapters |
+| Device control adapters | ⬜ PENDING | Camera, audio, replay, graphics device control |
+
+**Next step:** Self-service NAP registry (CRD + controller).
