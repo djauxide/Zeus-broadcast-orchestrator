@@ -205,6 +205,6 @@ Per the README spec, Phase 3 includes:
 | Runbook template library | ✅ COMPLETE | RunbookTemplate CRD + controller, football-single-path and news-dual-path-hitless examples |
 | 15+ NAP-certified applications | ✅ COMPLETE | 15 NAP application packages in examples/naps/, all pass conformance suite |
 | SW-P-08 / Ember+ routing adapters | ✅ COMPLETE | control.Adapter interface, SW-P-08 (TCP), Ember+ (scaffold), NAP routing integration |
-| Device control adapters | ✅ COMPLETE | camera (VISCA), audio, replay, graphics adapters |
+| Device control adapters | ✅ COMPLETE | camera (VISCA), audio, replay, graphics, GV AMPP, NEP adapters |
 
 **Next step:** Phase 3 complete! All Phase 3 items done.
