@@ -204,7 +204,7 @@ Per the README spec, Phase 3 includes:
 | Self-service NAP registry | ✅ COMPLETE | CRD + controller with Pending/Approved/Rejected phases, approve/reject methods |
 | Runbook template library | ✅ COMPLETE | RunbookTemplate CRD + controller, football-single-path and news-dual-path-hitless examples |
 | 15+ NAP-certified applications | ✅ COMPLETE | 15 NAP application packages in examples/naps/, all pass conformance suite |
-| SW-P-08 / Ember+ routing adapters | ⬜ PENDING | Legacy routing protocol adapters |
+| SW-P-08 / Ember+ routing adapters | ✅ COMPLETE | control.Adapter interface, SW-P-08 (TCP), Ember+ (scaffold), NAP routing integration |
 | Device control adapters | ⬜ PENDING | Camera, audio, replay, graphics device control |
 
-**Next step:** SW-P-08 / Ember+ routing adapters.
+**Next step:** Device control adapters (camera, audio, replay, graphics).
