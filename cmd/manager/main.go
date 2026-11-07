@@ -91,6 +91,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := (&controller.ZeusApplicationPackageReconciler{
+		Client: mgr.GetClient(), Scheme: mgr.GetScheme(),
+		NMOS: nmosClient,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create NAP controller")
+		os.Exit(1)
+	}
+
+	if err := (&controller.NAPRegistryReconciler{
+		Client: mgr.GetClient(), Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create NAP registry controller")
+		os.Exit(1)
+	}
+
 	if err := (&zeusv1.ZeusRunbook{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook")
 		os.Exit(1)
