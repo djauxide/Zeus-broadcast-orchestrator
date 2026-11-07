@@ -34,7 +34,7 @@ compile for `windows/amd64` (E-006).
 | 9 | Clean teardown | **PASS** | After `kubectl delete zeusrunbook mvp-single-path`: no `vision-mixer-1` `MxlReceiver`, no `vision-mixer-1` Deployment, no `MxlFlowMirror` |
 | 10 | Metrics | **PASS** | `zeus_reconcile_errors_total{reason="startup"} 0`, `zeus_runbook_phase{phase="Live"} 1`, plus `Degraded`/`Reconciling` series |
 | 11 | Audit log | **PASS** | JSON `phase_transition` lines for `probe-audit` with `"actor":"controller"` and a stable `"causal_chain_id":"edd6a72b-7694-4c22-919f-f0aef645674d"` |
-| 12 | Drain resilience | **PARTIAL (demonstrated)** | PDB `minAvailable: 1`, `disruptionsAllowed=1`, `currentHealthy=2`. See method below. |
+| 12 | Drain resilience | **PASS** | Multi-node kind (control-plane + worker). PDB `minAvailable: 1`, `allowedDisruptions: 1`. Pod delete → survivor stayed `1/1` Running, `availableReplicas` never below 1, leader election moved to surviving pod, full recovery to `2/2` ready after uncordon. Gate 12 fully verified live on 2026-11-07. |
 
 ### Gate 8 details
 

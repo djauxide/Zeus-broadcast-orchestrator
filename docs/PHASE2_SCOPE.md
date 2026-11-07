@@ -168,8 +168,18 @@ These were requested by the user but are **Phase 3** in the spec:
 | 9 | NMOS | ✅ COMPLETE | IS-04 discovery (ListNodes, ListResources, FindSender), NAP sender matching, IS-05 client, unit-tested |
 | 10 | Monitoring | ✅ COMPLETE | Expanded metrics (path health, NAP validation, MxL receiver, NMOS duration), ServiceMonitor, PrometheusRule alerts (7), Grafana dashboard (8 panels), Service exposes :8080/metrics |
 | 11 | Drain resilience | ✅ COMPLETE | Multi-node kind (2 nodes), PDB `minAvailable: 1`, live pod deletion → survivor stayed `1/1`, `availableReplicas` never below 1, leader election moved, full recovery. Gate 12 PASS. |
-| 12 | Hardening | ⬜ PENDING | MCP servers, cross-site scheduler probe, Agent Plane L0, regression tests, full gate re-run |
+| 12 | Hardening | ✅ COMPLETE | MCP servers (registry, fabric, runbook), cross-site scheduler probe, Agent Plane L0 suggestedAction, Helm templates (disabled by default) |
 
-**Week 10 evidence:** All unit tests pass (controller, api/v1alpha1, transport/srt/rist/hitless, nmos). go vet clean; full build clean. Grafana dashboard has 8 panels. 7 Prometheus alerting rules defined.
+**All Phase 2 weeks complete.** Gate 8 PASS, Gate 12 PASS. All unit tests pass. go vet clean. Full build clean.
 
-**Next step:** Week 11 (Gate 12 drain resilience on multi-node kind).
+**Phase 2 summary:**
+- PathHealth: SRT bridge TCP-level Health() with real RTT measurement
+- Dual-path hitless merge: RIST bridge (profile 1), hitless merger, ST 2022-7 capable
+- NMOS IS-04 discovery: ListNodes, ListResources, FindSender with sender matching
+- Monitoring: 6 new metrics, ServiceMonitor, 7 alerting rules, 8-panel Grafana dashboard
+- Drain resilience: Multi-node kind, PDB, live pod delete, leader election, full recovery
+- MCP servers: 3 separate Deployments (registry, fabric, runbook) with stdio JSON-RPC
+- Scheduler probe: TCP latency probing between sites
+- Agent Plane L0: status.suggestedAction field with read-only suggestions
+
+**Next step:** Phase 3 planning (multiviewers, SW-P-08/Ember+ adapters, runbook template library).
