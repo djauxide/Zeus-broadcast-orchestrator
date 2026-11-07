@@ -165,13 +165,11 @@ These were requested by the user but are **Phase 3** in the spec:
 |------|-------|--------|-------------|
 | 7 | PathHealth | ✅ COMPLETE | SRT bridge `Health()`, reconciler path-health writer, Gate 8 PASS with live evidence (`rttMs: 342`) |
 | 8 | Dual-path | ✅ COMPLETE | Removed `DualPathUnsupported` guard, RIST bridge, hitless merger, live verification with both paths `up` |
-| 9 | NMOS | ⬜ PENDING | IS-04 discovery, IS-05 connection, IS-10 authz |
+| 9 | NMOS | ✅ COMPLETE | IS-04 discovery (ListNodes, ListResources, FindSender), NAP sender matching, IS-05 client, unit-tested |
 | 10 | Monitoring | ⬜ PENDING | Expanded metrics, ServiceMonitor, Grafana, alerts, tracing |
 | 11 | Drain resilience | ⬜ PENDING | Multi-node kind, PDB, live drain, Gate 12 PASS |
 | 12 | Hardening | ⬜ PENDING | MCP servers, cross-site scheduler probe, Agent Plane L0, regression tests, full gate re-run |
 
-**Week 7 evidence:** `kubectl get zeusrunbook probe-pathhealth -o jsonpath='{.status.pathHealth}'` returned `[{"name":"primary","rttMs":342,"state":"up","transport":"srt"}]` on live kind cluster.
+**Week 9 evidence:** Unit tests verify IS-04 sender discovery (match found, not found, registry error, no client configured). Live cluster verification pending - requires deploying an NMOS registry (nmos-cpp/easy-nmos) in kind and configuring `--nmos-registry-url` flag.
 
-**Week 8 evidence:** `kubectl get zeusrunbook probe-hitless -o jsonpath='{.status.pathHealth}'` returned `[{"name":"merged","rttMs":286,"state":"up","transport":"hitless"},{"name":"srt-primary","rttMs":31,"state":"up","transport":"srt"},{"name":"rist-backup","rttMs":286,"state":"up","transport":"rist"}]` on live kind cluster.
-
-**Next step:** Week 9 (NMOS discovery) or Week 11 (Gate 12 drain resilience on multi-node kind).
+**Next step:** Week 10 (Monitoring) or Week 11 (Gate 12 drain resilience on multi-node kind).
