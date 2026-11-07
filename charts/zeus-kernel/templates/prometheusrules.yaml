@@ -1,0 +1,76 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: zeus-kernel
+  namespace: {{ .Release.Namespace }}
+  labels:
+    release: {{ .Release.Name }}
+    app: zeus-kernel
+spec:
+  groups:
+    - name: zeus-kernel.rules
+      rules:
+        - alert: ZeusRunbookDown
+          expr: zeus_runbook_phase{phase!="Live"} > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Zeus runbook not in Live phase"
+            description: "Runbook {{ $labels.runbook }} is in phase {{ $labels.phase }} for more than 5 minutes."
+
+        - alert: ZeusRunbookDegraded
+          expr: zeus_runbook_phase{phase="Degraded"} > 0
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Zeus runbook is Degraded"
+            description: "Runbook {{ $labels.runbook }} is Degraded due to {{ $labels.reason }}."
+
+        - alert: ZeusPathDown
+          expr: zeus_path_health_state{state="down"} == 1
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Zeus WAN path is down"
+            description: "Path {{ $labels.path }} (transport: {{ $labels.transport }}) is down on runbook {{ $labels.runbook }}."
+
+        - alert: ZeusPathDegraded
+          expr: zeus_path_health_state{state="degraded"} == 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Zeus WAN path is degraded"
+            description: "Path {{ $labels.path }} (transport: {{ $labels.transport }}) is degraded with RTT {{ $labels.rttMs }}ms."
+
+        - alert: ZeusPathHighRTT
+          expr: zeus_path_health_state{state="up"} == 1 and zeus_path_health_rtt_ms > 500
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Zeus WAN path high RTT"
+            description: "Path {{ $labels.path }} has RTT {{ $labels.rttMs }}ms, exceeding 500ms threshold."
+
+        - alert: ZeusNAPRejected
+          expr: increase(zeus_nap_validation_total{outcome="rejected"}[5m]) > 0
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Zeus NAP validation rejected"
+            description: "NAP {{ $labels.nap }} was rejected: {{ $labels.reason }}."
+
+        - alert: ZeusReconcileErrors
+          expr: increase(zeus_reconcile_errors_total[5m]) > 10
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High Zeus reconcile error rate"
+            description: "Zeus kernel has {{ $value }} reconcile errors in the last 5 minutes."
+{{- end }}

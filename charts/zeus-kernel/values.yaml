@@ -44,3 +44,18 @@ leaderElection:
 # explicitly for RDMA rollouts.
 providerValidate:
   enabled: false
+
+# Monitoring configuration (Phase 2 Week 10)
+monitoring:
+  enabled: true
+  scrapeInterval: "15s"
+  grafana:
+    enabled: true
+    dashboardPath: "dashboards/zeus.json"
+  alerting:
+    enabled: true
+    rulesPath: "alerts/zeus.yaml"
+  tracing:
+    enabled: false
+    endpoint: ""
+    serviceName: "zeus-kernel"

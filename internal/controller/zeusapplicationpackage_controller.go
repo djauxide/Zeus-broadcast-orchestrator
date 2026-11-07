@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -41,6 +42,7 @@ func (r *ZeusApplicationPackageReconciler) Reconcile(ctx context.Context, req ct
 		nap.Status.Phase = "Rejected"
 		nap.Status.ObservedGen = nap.Generation
 		logger.Info("nap_rejected", "nap", nap.Name, "reason", reason)
+		NAPValidationTotal.WithLabelValues("rejected").Inc()
 		return ctrl.Result{}, r.Status().Update(ctx, &nap)
 	}
 
@@ -65,11 +67,13 @@ func (r *ZeusApplicationPackageReconciler) Reconcile(ctx context.Context, req ct
 		if r.NMOS == nil {
 			return reject("NMOSClientNotConfigured")
 		}
+		start := time.Now()
 		sender, err := r.NMOS.FindSender(ctx, nmos.SenderMatch{
 			MediaType: nap.Spec.NMOS.MediaType,
 			Essence:   nap.Spec.NMOS.Essence,
 			Sampling:  nap.Spec.NMOS.Sampling,
 		})
+		NmosDiscoveryDuration.WithLabelValues("FindSender").Observe(time.Since(start).Seconds())
 		if err != nil {
 			return reject("NMOSNoSenderFound: " + err.Error())
 		}
@@ -81,6 +85,7 @@ func (r *ZeusApplicationPackageReconciler) Reconcile(ctx context.Context, req ct
 
 	nap.Status.Phase = "Validated"
 	nap.Status.ObservedGen = nap.Generation
+	NAPValidationTotal.WithLabelValues("validated").Inc()
 	logger.Info("nap_validated", "nap", nap.Name)
 	return ctrl.Result{}, r.Status().Update(ctx, &nap)
 }

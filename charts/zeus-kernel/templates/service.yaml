@@ -12,3 +12,6 @@ spec:
     - name: webhook
       port: 443
       targetPort: 9443
+    - name: metrics
+      port: 8080
+      targetPort: 8080

@@ -159,6 +159,7 @@ func (r *ZeusRunbookReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			ReconcileErrors.WithLabelValues("fabric_ensure").Inc()
 			return ctrl.Result{}, err
 		}
+		MxlReceiverBound.WithLabelValues(p.Name, podName).Set(1)
 	}
 
 	// Phase 2: measure real path health for each contribution path and
@@ -181,6 +182,17 @@ func (r *ZeusRunbookReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return r.setPhase(ctx, &rb, "Degraded", "HitlessHealthError", err.Error())
 		}
 		rb.Status.PathHealth = []zeusv1.PathHealth{merged}
+		// Emit path health metrics for all paths including merged.
+		allPaths := append([]zeusv1.PathHealth{merged}, rb.Status.PathHealth[1:]...)
+		for _, ph := range allPaths {
+			PathHealthState.WithLabelValues(ph.Name, ph.Transport, ph.State).Set(1)
+			// Reset other states for this path so only the current state is 1.
+			for _, st := range []string{"up", "degraded", "down"} {
+				if st != ph.State {
+					PathHealthState.WithLabelValues(ph.Name, ph.Transport, st).Set(0)
+				}
+			}
+		}
 		// Also include per-path health for visibility.
 		for _, p := range rb.Spec.Ingress.Contribution.Paths {
 			name := p.Name
@@ -202,6 +214,15 @@ func (r *ZeusRunbookReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		pathHealth, anyDown := r.computePathHealth(ctx, rb)
 		if len(pathHealth) > 0 {
 			rb.Status.PathHealth = pathHealth
+			// Emit path health metrics.
+			for _, ph := range pathHealth {
+				PathHealthState.WithLabelValues(ph.Name, ph.Transport, ph.State).Set(1)
+				for _, st := range []string{"up", "degraded", "down"} {
+					if st != ph.State {
+						PathHealthState.WithLabelValues(ph.Name, ph.Transport, st).Set(0)
+					}
+				}
+			}
 			if anyDown {
 				return r.setPhase(ctx, &rb, "Degraded", "PathDown",
 					"one or more SRT contribution paths are down")
