@@ -1,0 +1,22 @@
+apiVersion: core.zeus.broadcast/v1alpha1
+kind: ZeusApplicationPackage
+metadata:
+  name: character-generator-2
+  namespace: default
+spec:
+  image: ghcr.io/zeus-broadcast/character-generator:3.5.0
+  imageSignature: "cosign:sha256:nop012qrs345"
+  crm:
+    cpu: "350m"
+    memory: "448Mi"
+    mediaIO:
+      mxlReader: true
+      mxlWriter: false
+      domainRef: "domain-a"
+      formats: ["video/v210"]
+  nmos:
+    is04: true
+    is05: false
+    is10: false
+    transport: urn:x-nmos:transport:mxl
+  healthPath: /healthz

@@ -1,0 +1,22 @@
+apiVersion: core.zeus.broadcast/v1alpha1
+kind: ZeusApplicationPackage
+metadata:
+  name: audio-mixer-1
+  namespace: default
+spec:
+  image: ghcr.io/zeus-broadcast/audio-mixer:2.0.0
+  imageSignature: "cosign:sha256:stu901vwx234"
+  crm:
+    cpu: "250m"
+    memory: "320Mi"
+    mediaIO:
+      mxlReader: true
+      mxlWriter: true
+      domainRef: "domain-a"
+      formats: ["audio/pcm"]
+  nmos:
+    is04: true
+    is05: true
+    is10: false
+    transport: urn:x-nmos:transport:mxl
+  healthPath: /healthz

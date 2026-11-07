@@ -1,0 +1,22 @@
+apiVersion: core.zeus.broadcast/v1alpha1
+kind: ZeusApplicationPackage
+metadata:
+  name: graphics-playout-1
+  namespace: default
+spec:
+  image: ghcr.io/zeus-broadcast/graphics-playout:2.5.0
+  imageSignature: "cosign:sha256:mno345pqr678"
+  crm:
+    cpu: "400m"
+    memory: "512Mi"
+    mediaIO:
+      mxlReader: true
+      mxlWriter: true
+      domainRef: "domain-a"
+      formats: ["video/v210"]
+  nmos:
+    is04: true
+    is05: true
+    is10: false
+    transport: urn:x-nmos:transport:mxl
+  healthPath: /healthz

@@ -1,0 +1,22 @@
+apiVersion: core.zeus.broadcast/v1alpha1
+kind: ZeusApplicationPackage
+metadata:
+  name: audio-processor-1
+  namespace: default
+spec:
+  image: ghcr.io/zeus-broadcast/audio-processor:1.5.0
+  imageSignature: "cosign:sha256:def456ghi789"
+  crm:
+    cpu: "200m"
+    memory: "256Mi"
+    mediaIO:
+      mxlReader: true
+      mxlWriter: true
+      domainRef: "domain-a"
+      formats: ["audio/pcm"]
+  nmos:
+    is04: true
+    is05: true
+    is10: false
+    transport: urn:x-nmos:transport:mxl
+  healthPath: /healthz

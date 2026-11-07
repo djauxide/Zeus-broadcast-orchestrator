@@ -1,0 +1,22 @@
+apiVersion: core.zeus.broadcast/v1alpha1
+kind: ZeusApplicationPackage
+metadata:
+  name: camera-control-unit-1
+  namespace: default
+spec:
+  image: ghcr.io/zeus-broadcast/camera-control-unit:1.0.0
+  imageSignature: "cosign:sha256:pqr678stu901"
+  crm:
+    cpu: "100m"
+    memory: "128Mi"
+    mediaIO:
+      mxlReader: false
+      mxlWriter: true
+      domainRef: "domain-a"
+      formats: ["video/v210"]
+  nmos:
+    is04: true
+    is05: false
+    is10: false
+    transport: urn:x-nmos:transport:mxl
+  healthPath: /healthz

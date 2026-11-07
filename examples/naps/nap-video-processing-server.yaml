@@ -1,0 +1,22 @@
+apiVersion: core.zeus.broadcast/v1alpha1
+kind: ZeusApplicationPackage
+metadata:
+  name: video-processing-server-1
+  namespace: default
+spec:
+  image: ghcr.io/zeus-broadcast/video-processing-server:2.7.0
+  imageSignature: "cosign:sha256:qrs345tuv678"
+  crm:
+    cpu: "1200m"
+    memory: "2Gi"
+    mediaIO:
+      mxlReader: true
+      mxlWriter: true
+      domainRef: "domain-a"
+      formats: ["video/v210"]
+  nmos:
+    is04: true
+    is05: true
+    is10: false
+    transport: urn:x-nmos:transport:mxl
+  healthPath: /healthz
