@@ -167,7 +167,7 @@ These were requested by the user but are **Phase 3** in the spec:
 | 8 | Dual-path | ✅ COMPLETE | Removed `DualPathUnsupported` guard, RIST bridge, hitless merger, live verification with both paths `up` |
 | 9 | NMOS | ✅ COMPLETE | IS-04 discovery (ListNodes, ListResources, FindSender), NAP sender matching, IS-05 client, unit-tested |
 | 10 | Monitoring | ✅ COMPLETE | Expanded metrics (path health, NAP validation, MxL receiver, NMOS duration), ServiceMonitor, PrometheusRule alerts (7), Grafana dashboard (8 panels), Service exposes :8080/metrics |
-| 11 | Drain resilience | ⬜ PENDING | Multi-node kind, PDB, live drain, Gate 12 PASS |
+| 11 | Drain resilience | ⬜ PARTIAL | Single-node kind cluster (multi-node creation blocked by cgroup issues in Podman). PDB verified: one pod deleted → other stayed 1/1 Running, availableReplicas never below 1, leader election moved to surviving pod. Gate 12 remains PARTIAL - full `kubectl drain` not possible on single-node cluster. |
 | 12 | Hardening | ⬜ PENDING | MCP servers, cross-site scheduler probe, Agent Plane L0, regression tests, full gate re-run |
 
 **Week 10 evidence:** All unit tests pass (controller, api/v1alpha1, transport/srt/rist/hitless, nmos). go vet clean; full build clean. Grafana dashboard has 8 panels. 7 Prometheus alerting rules defined.
