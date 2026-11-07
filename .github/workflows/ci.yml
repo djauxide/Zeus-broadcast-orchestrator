@@ -1,0 +1,157 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  GO_VERSION: "1.26.0"
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+  IMAGE_NAME: zeus-kernel
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+        cache: false
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Gate 1: make build
+        run: make build
+
+      - name: Verify binaries exist
+        run: |
+          test -f bin/manager && echo "bin/manager exists"
+          test -f bin/zeus-nap-validate && echo "bin/zeus-nap-validate exists"
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Gate 2: make test
+        run: make test
+
+      - name: Gate 3: make conversion-test
+        run: make conversion-test
+
+  nap-conformance:
+    name: NAP Conformance
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build conformance tool
+        run: go build -o bin/zeus-nap-conformance ./cmd/zeus-nap-conformance
+
+      - name: Run conformance on all NAP examples
+        run: |
+          for f in examples/naps/nap-*.yaml; do
+            echo "=== $f ==="
+            ./bin/zeus-nap-conformance --input "$f" --json | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+if d['passed']:
+    print(f'PASS: {d[\"napName\"]}')
+else:
+    print(f'FAIL: {d[\"napName\"]}')
+    for c in d['checks']:
+        if not c['pass']:
+            print(f'  FAIL: {c[\"check\"]}: {c[\"reason\"]}')
+    sys.exit(0 if d['passed'] else 1)
+" || exit 1
+          done
+
+  container-build:
+    name: Container Build
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push kernel image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.title=zeus-kernel
+            org.opencontainers.image.description=Zeus Broadcast Orchestrator Kernel
+            org.opencontainers.image.version=${{ github.sha }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [lint, build, test, nap-conformance, container-build]
+    if: always()
+    steps:
+      - name: Check status
+        run: |
+          echo "CI completed with status: ${{ job.status }}"
+          echo "Lint: ${{ needs.lint.result }}"
+          echo "Build: ${{ needs.build.result }}"
+          echo "Test: ${{ needs.test.result }}"
+          echo "NAP Conformance: ${{ needs.nap-conformance.result }}"
+          echo "Container Build: ${{ needs.container-build.result }}"

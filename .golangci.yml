@@ -1,0 +1,73 @@
+run:
+  timeout: 5m
+  tests: false
+
+linters:
+  enable-all: true
+  disable:
+    - exhaustive
+    - funlen
+    - gocognit
+    - gomnd
+    - lll
+    - nlreturn
+    - nosnakecase
+    - nonamedreturns
+    - tagliatelle
+    - wrapcheck
+    - wsl
+
+linters-settings:
+  govet:
+    check-shadowing: true
+    settings:
+      printf:
+        functions:
+          - github.com/zeus-broadcast/zeus-kernel/internal/controller.log
+
+  gci:
+    local-prefixes: github.com/zeus-broadcast/zeus-kernel
+
+  gocritic:
+    enabled-tags:
+      - performance
+      - style
+      - bug
+
+  revive:
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: exported
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefining-builtin-id
+
+issues:
+  exclude-rules:
+    - linters:
+        - gochecknoglobals
+      text: "runbooklog"
+    - linters:
+        - gochecknoglobals
+      text: "runbooklog"
+    - path: internal/controller/zeusrunbook_controller.go
+      linters:
+        - gochecknoglobals
+      text: "runbooklog"
