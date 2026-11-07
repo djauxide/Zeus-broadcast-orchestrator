@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -17,6 +18,9 @@ import (
 
 	zeusv1 "github.com/zeus-broadcast/zeus-kernel/api/v1alpha1"
 	"github.com/zeus-broadcast/zeus-kernel/internal/controller"
+	"github.com/zeus-broadcast/zeus-kernel/internal/control"
+	"github.com/zeus-broadcast/zeus-kernel/internal/control/emberplus"
+	"github.com/zeus-broadcast/zeus-kernel/internal/control/swp08"
 	"github.com/zeus-broadcast/zeus-kernel/internal/fabric"
 	"github.com/zeus-broadcast/zeus-kernel/internal/nmos"
 	"github.com/zeus-broadcast/zeus-kernel/internal/transport/hitless"
@@ -73,9 +77,16 @@ func main() {
 		setupLog.Info("nmos client configured", "registry", nmosRegistryURL)
 	}
 
+	// Phase 3: Routing adapter registry.
+	routerRegistry := control.NewAdapterRegistry()
+	routerRegistry.Register("swp08", swp08.NewAdapter(control.RouterConfig{}, log.New(os.Stderr, "[swp08] ", log.LstdFlags|log.Lmicroseconds)))
+	routerRegistry.Register("emberplus", emberplus.NewAdapter(control.RouterConfig{}, log.New(os.Stderr, "[emberplus] ", log.LstdFlags|log.Lmicroseconds)))
+	setupLog.Info("router registry initialized", "adapters", routerRegistry.List())
+
 	if err := (&controller.ZeusApplicationPackageReconciler{
 		Client: mgr.GetClient(), Scheme: mgr.GetScheme(),
-		NMOS: nmosClient,
+		NMOS:   nmosClient,
+		Router: routerRegistry,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create NAP controller")
 		os.Exit(1)

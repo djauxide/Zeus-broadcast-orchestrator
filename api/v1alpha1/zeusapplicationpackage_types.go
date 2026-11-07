@@ -29,11 +29,27 @@ type NMOSSpec struct {
 	Sampling      string `json:"sampling,omitempty"`      // e.g. "YCbCr:4:2:2:10bit"
 }
 
+// RoutingConfig specifies how a NAP should be routed through a routing router.
+type RoutingConfig struct {
+	// Provider is the routing protocol provider (tcp, swp08, emberplus).
+	Provider string `json:"provider"`
+
+	// RouterRef is a reference to the routing router.
+	RouterRef string `json:"routerRef,omitempty"`
+
+	// SourceID is the source crosspoint ID on the router.
+	SourceID string `json:"sourceID,omitempty"`
+
+	// DestinationID is the destination crosspoint ID on the router.
+	DestinationID string `json:"destinationID,omitempty"`
+}
+
 type ZeusApplicationPackageSpec struct {
 	Image          string       `json:"image"`
 	ImageSignature string       `json:"imageSignature"`
 	CRM            CRMResources `json:"crm"`
 	NMOS           NMOSSpec     `json:"nmos,omitempty"`
+	Routing        RoutingConfig `json:"routing,omitempty"`
 	HealthPath     string       `json:"healthPath,omitempty"`
 }
 
