@@ -19,10 +19,14 @@ type CRMResources struct {
 }
 
 type NMOSSpec struct {
-	IS04      bool   `json:"is04,omitempty"`
-	IS05      bool   `json:"is05,omitempty"`
-	IS10      bool   `json:"is10,omitempty"`
-	Transport string `json:"transport,omitempty"`
+	IS04          bool   `json:"is04,omitempty"`
+	IS05          bool   `json:"is05,omitempty"`
+	IS10          bool   `json:"is10,omitempty"`
+	Transport     string `json:"transport,omitempty"`
+	SenderMatch   bool   `json:"senderMatch,omitempty"`   // Require IS-04 sender discovery before validation
+	MediaType     string `json:"mediaType,omitempty"`     // e.g. "video/raw"
+	Essence       string `json:"essence,omitempty"`       // e.g. "raw"
+	Sampling      string `json:"sampling,omitempty"`      // e.g. "YCbCr:4:2:2:10bit"
 }
 
 type ZeusApplicationPackageSpec struct {

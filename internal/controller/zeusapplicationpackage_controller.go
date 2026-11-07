@@ -9,11 +9,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	zeusv1 "github.com/zeus-broadcast/zeus-kernel/api/v1alpha1"
+	"github.com/zeus-broadcast/zeus-kernel/internal/nmos"
 )
 
 type ZeusApplicationPackageReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	NMOS   NMOSClient
+}
+
+// NMOSClient is the subset of the NMOS client used by the NAP reconciler.
+// Defined as an interface so tests can inject a fake.
+type NMOSClient interface {
+	FindSender(ctx context.Context, match nmos.SenderMatch) (*nmos.Resource, error)
 }
 
 func (r *ZeusApplicationPackageReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -48,6 +56,27 @@ func (r *ZeusApplicationPackageReconciler) Reconcile(ctx context.Context, req ct
 	}
 	if (io.MXLReader || io.MXLWriter) && nap.Spec.NMOS.Transport != "urn:x-nmos:transport:mxl" {
 		return reject("MXLWithoutMXLTransport")
+	}
+
+	// Phase 2 Week 9: IS-04 sender discovery. When senderMatch is enabled,
+	// query the NMOS registry for a sender matching the NAP's media criteria.
+	// If no matching sender is found, the NAP cannot be validated.
+	if nap.Spec.NMOS.IS04 && nap.Spec.NMOS.SenderMatch {
+		if r.NMOS == nil {
+			return reject("NMOSClientNotConfigured")
+		}
+		sender, err := r.NMOS.FindSender(ctx, nmos.SenderMatch{
+			MediaType: nap.Spec.NMOS.MediaType,
+			Essence:   nap.Spec.NMOS.Essence,
+			Sampling:  nap.Spec.NMOS.Sampling,
+		})
+		if err != nil {
+			return reject("NMOSNoSenderFound: " + err.Error())
+		}
+		if sender == nil {
+			return reject("NMOSNoSenderFound: no matching sender in registry")
+		}
+		logger.Info("nmos_sender_found", "nap", nap.Name, "sender", sender.ID, "senderLabel", sender.Label)
 	}
 
 	nap.Status.Phase = "Validated"

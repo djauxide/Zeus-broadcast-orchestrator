@@ -2,7 +2,9 @@ package main
 
 import (
 	"flag"
+	"net/http"
 	"os"
+	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -16,6 +18,7 @@ import (
 	zeusv1 "github.com/zeus-broadcast/zeus-kernel/api/v1alpha1"
 	"github.com/zeus-broadcast/zeus-kernel/internal/controller"
 	"github.com/zeus-broadcast/zeus-kernel/internal/fabric"
+	"github.com/zeus-broadcast/zeus-kernel/internal/nmos"
 	"github.com/zeus-broadcast/zeus-kernel/internal/transport/hitless"
 	"github.com/zeus-broadcast/zeus-kernel/internal/transport/srt"
 )
@@ -33,9 +36,14 @@ func init() {
 func main() {
 	var metricsAddr, probeAddr string
 	var enableLeaderElection bool
+	var nmosRegistryURL, nmosTokenURL, nmosClientID, nmosClientSecret string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false, "")
+	flag.StringVar(&nmosRegistryURL, "nmos-registry-url", "", "NMOS IS-04 registry base URL (e.g. http://nmos-registry.nmos-system.svc.cluster.local)")
+	flag.StringVar(&nmosTokenURL, "nmos-token-url", "", "OAuth2 token endpoint for IS-10 authorization")
+	flag.StringVar(&nmosClientID, "nmos-client-id", "", "OAuth2 client ID")
+	flag.StringVar(&nmosClientSecret, "nmos-client-secret", "", "OAuth2 client secret")
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
@@ -53,8 +61,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	var nmosClient *nmos.Client
+	if nmosRegistryURL != "" {
+		nmosClient = &nmos.Client{
+			BaseURL:      nmosRegistryURL,
+			TokenURL:     nmosTokenURL,
+			ClientID:     nmosClientID,
+			ClientSecret: nmosClientSecret,
+			HTTP:         &http.Client{Timeout: 10 * time.Second},
+		}
+		setupLog.Info("nmos client configured", "registry", nmosRegistryURL)
+	}
+
 	if err := (&controller.ZeusApplicationPackageReconciler{
 		Client: mgr.GetClient(), Scheme: mgr.GetScheme(),
+		NMOS: nmosClient,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create NAP controller")
 		os.Exit(1)
