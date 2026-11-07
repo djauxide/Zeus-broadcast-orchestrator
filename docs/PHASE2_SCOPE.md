@@ -201,10 +201,10 @@ Per the README spec, Phase 3 includes:
 | Item | Status | Notes |
 |------|--------|-------|
 | NAP conformance suite | ✅ COMPLETE | `cmd/zeus-nap-conformance` with valid/invalid examples, --json output |
-| Self-service NAP registry | ⬜ PENDING | CRD + controller for NAP registration and approval workflow |
+| Self-service NAP registry | ✅ COMPLETE | CRD + controller with Pending/Approved/Rejected phases, approve/reject methods |
 | Runbook template library | ⬜ PENDING | Template library for common event classes |
 | 15+ NAP-certified applications | ⬜ PENDING | Applications validated against conformance suite |
 | SW-P-08 / Ember+ routing adapters | ⬜ PENDING | Legacy routing protocol adapters |
 | Device control adapters | ⬜ PENDING | Camera, audio, replay, graphics device control |
 
-**Next step:** Self-service NAP registry (CRD + controller).
+**Next step:** Runbook template library.
