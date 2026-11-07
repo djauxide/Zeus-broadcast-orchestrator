@@ -3,6 +3,7 @@ package device
 import (
 	"context"
 	"fmt"
+	"log"
 )
 
 // DeviceControlAdapter is the interface for device control adapters.
@@ -46,6 +47,9 @@ type DeviceConfig struct {
 
 	// DeviceID is the device ID on the control network.
 	DeviceID string `json:"deviceID,omitempty"`
+
+	// FacilityID is the facility ID (for NEP, AMPP, etc.).
+	FacilityID string `json:"facilityID,omitempty"`
 }
 
 // ErrDeviceNotFound is returned when no adapter is found for a device type.
@@ -57,42 +61,72 @@ func (e *ErrDeviceNotFound) Error() string {
 	return fmt.Sprintf("no device control adapter registered for device type: %s", e.DeviceType)
 }
 
-// AdapterRegistry manages registered device control adapters.
+// DeviceAdapterFactory creates a DeviceControlAdapter from a config.
+type DeviceAdapterFactory func(config DeviceConfig, logger *log.Logger) DeviceControlAdapter
+
+// AdapterRegistry manages registered device control adapter factories.
 type AdapterRegistry struct {
-	adapters map[string]DeviceControlAdapter
+	adapters map[string]DeviceAdapterFactory
 }
 
 // NewAdapterRegistry creates a new empty adapter registry.
 func NewAdapterRegistry() *AdapterRegistry {
 	return &AdapterRegistry{
-		adapters: make(map[string]DeviceControlAdapter),
+		adapters: make(map[string]DeviceAdapterFactory),
 	}
 }
 
-// Register registers an adapter for a device type.
-func (r *AdapterRegistry) Register(deviceType string, adapter DeviceControlAdapter) {
-	r.adapters[deviceType] = adapter
+// Register registers an adapter factory for a device type.
+func (r *AdapterRegistry) Register(deviceType string, factory DeviceAdapterFactory) {
+	r.adapters[deviceType] = factory
 }
 
-// Get returns the adapter for a device type, or an error if not registered.
-func (r *AdapterRegistry) Get(deviceType string) (DeviceControlAdapter, error) {
-	adapter, ok := r.adapters[deviceType]
+// Get returns the adapter factory for a device type, or an error if not registered.
+func (r *AdapterRegistry) Get(deviceType string) (DeviceAdapterFactory, error) {
+	factory, ok := r.adapters[deviceType]
 	if !ok {
 		return nil, &ErrDeviceNotFound{DeviceType: deviceType}
 	}
-	return adapter, nil
+	return factory, nil
 }
 
 // GetAdapter is an alias for Get to satisfy controller interfaces.
-func (r *AdapterRegistry) GetAdapter(deviceType string) (DeviceControlAdapter, error) {
+func (r *AdapterRegistry) GetAdapter(deviceType string) (DeviceAdapterFactory, error) {
 	return r.Get(deviceType)
 }
 
-// List returns all registered device type names.
-func (r *AdapterRegistry) List() []string {
-	types := make([]string, 0, len(r.adapters))
-	for t := range r.adapters {
-		types = append(types, t)
-	}
-	return types
+// RegisterDeviceAdapter registers a device control adapter factory for a device type
+// in the global registry.
+func RegisterDeviceAdapter(deviceType string, factory DeviceAdapterFactory) {
+	GlobalRegistry.Register(deviceType, factory)
+}
+
+// GetDeviceAdapter returns a registered adapter factory by device type.
+func GetDeviceAdapter(deviceType string) (DeviceAdapterFactory, error) {
+	return GlobalRegistry.Get(deviceType)
+}
+
+// GlobalRegistry is the package-level adapter registry instance.
+var GlobalRegistry = NewAdapterRegistry()
+
+// init registers built-in device adapters.
+func init() {
+	RegisterDeviceAdapter("camera", func(config DeviceConfig, logger *log.Logger) DeviceControlAdapter {
+		return NewCameraAdapter(config, logger)
+	})
+	RegisterDeviceAdapter("audio", func(config DeviceConfig, logger *log.Logger) DeviceControlAdapter {
+		return NewAudioAdapter(config, logger)
+	})
+	RegisterDeviceAdapter("replay", func(config DeviceConfig, logger *log.Logger) DeviceControlAdapter {
+		return NewReplayAdapter(config, logger)
+	})
+	RegisterDeviceAdapter("graphics", func(config DeviceConfig, logger *log.Logger) DeviceControlAdapter {
+		return NewGraphicsAdapter(config, logger)
+	})
+	RegisterDeviceAdapter("ampp", func(config DeviceConfig, logger *log.Logger) DeviceControlAdapter {
+		return NewAMPPAdapter(config, logger)
+	})
+	RegisterDeviceAdapter("nep", func(config DeviceConfig, logger *log.Logger) DeviceControlAdapter {
+		return NewNEPAdapter(config, logger)
+	})
 }
