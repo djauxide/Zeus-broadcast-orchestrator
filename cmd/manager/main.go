@@ -106,6 +106,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := (&controller.RunbookTemplateReconciler{
+		Client: mgr.GetClient(), Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create RunbookTemplate controller")
+		os.Exit(1)
+	}
+
 	if err := (&zeusv1.ZeusRunbook{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook")
 		os.Exit(1)

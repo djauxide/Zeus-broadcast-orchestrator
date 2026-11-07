@@ -1,0 +1,71 @@
+apiVersion: core.zeus.broadcast/v1alpha1
+kind: RunbookTemplate
+metadata:
+  name: news-dual-path-hitless
+  namespace: default
+spec:
+  displayName: News Dual-Path Hitless Contribution
+  description: Dual-path hitless SRT+RIST contribution for news coverage
+  eventClass: news
+  naps:
+    - name: vision-mixer
+      nap: vision-mixer
+  ingress:
+    contribution:
+      redundancy: hitless
+      mergeMode: hitless
+      paths:
+        - name: srt-primary
+          transport: srt
+          priority: 1
+          srt:
+            mode: rendezvous
+            remoteHost: 198.51.100.20
+            remotePort: 9000
+            latencyMs: 80
+            pbKeyLen: 32
+            passphraseSecretRef:
+              name: srt-news-pass
+              key: passphrase
+        - name: rist-backup
+          transport: rist
+          priority: 2
+          rist:
+            profile: 1
+            remoteHost: 198.51.100.21
+            remotePort: 9100
+            passphraseSecretRef:
+              name: rist-news-pass
+              key: passphrase
+  parameters:
+    - name: napName
+      description: Name of the NAP placement
+      default: vision-mixer
+      required: true
+      type: string
+    - name: srtRemoteHost
+      description: Primary SRT remote host
+      default: 198.51.100.20
+      required: true
+      type: string
+    - name: ristRemoteHost
+      description: Backup RIST remote host
+      default: 198.51.100.21
+      required: true
+      type: string
+    - name: srtPassphraseSecret
+      description: SRT passphrase secret name
+      default: srt-news-pass
+      required: true
+      type: string
+    - name: ristPassphraseSecret
+      description: RIST passphrase secret name
+      default: rist-news-pass
+      required: true
+      type: string
+  examples:
+    napName: vision-mixer-1
+    srtRemoteHost: 198.51.100.30
+    ristRemoteHost: 198.51.100.31
+    srtPassphraseSecret: srt-news-pass
+    ristPassphraseSecret: rist-news-pass

@@ -1,0 +1,55 @@
+apiVersion: core.zeus.broadcast/v1alpha1
+kind: RunbookTemplate
+metadata:
+  name: football-single-path
+  namespace: default
+spec:
+  displayName: Football Single-Path Contribution
+  description: Single-path SRT contribution for football match coverage
+  eventClass: football
+  naps:
+    - name: vision-mixer
+      nap: vision-mixer
+  ingress:
+    contribution:
+      redundancy: none
+      mergeMode: switchover
+      paths:
+        - name: primary
+          transport: srt
+          priority: 1
+          srt:
+            mode: caller
+            remoteHost: 203.0.113.10
+            remotePort: 9000
+            latencyMs: 120
+            pbKeyLen: 32
+            passphraseSecretRef:
+              name: srt-mvp-pass
+              key: passphrase
+  parameters:
+    - name: napName
+      description: Name of the NAP placement
+      default: vision-mixer
+      required: true
+      type: string
+    - name: remoteHost
+      description: Remote SRT host address
+      default: 203.0.113.10
+      required: true
+      type: string
+    - name: remotePort
+      description: Remote SRT port
+      default: "9000"
+      required: true
+      type: string
+    - name: latencyMs
+      description: SRT latency in milliseconds
+      default: "120"
+      required: false
+      type: string
+  examples:
+    napName: vision-mixer-1
+    remoteHost: 198.51.100.20
+    remotePort: "9000"
+    latencyMs: "80"
