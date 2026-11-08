@@ -6,10 +6,6 @@ https://img.shields.io/badge/status-MVP%20buildable-yellow
 https://img.shields.io/badge/kubernetes-1.28%2B-blue
 https://img.shields.io/badge/go-1.26-blue
 
-Note: I am an AI assistant and cannot attach a downloadable file. This README is the complete, self-contained specification — save it as README.md, run tools/split-doc.sh (Part 2), and you have a working repo.
-
----
-
 Table of Contents
 
 1. What Is This
