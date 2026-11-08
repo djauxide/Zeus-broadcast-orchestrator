@@ -1,0 +1,57 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: napregistries.core.zeus.broadcast
+spec:
+  group: core.zeus.broadcast
+  names:
+    kind: NAPRegistry
+    plural: napregistries
+    singular: napregistry
+    shortNames:
+      - napreg
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              napName:
+                type: string
+              napVersion:
+                type: string
+              napImage:
+                type: string
+              napImageSignature:
+                type: string
+              napType:
+                type: string
+              napDescription:
+                type: string
+              conformanceResult:
+                type: string
+              conformanceReport:
+                type: string
+              submitter:
+                type: string
+              submitterContact:
+                type: string
+          status:
+            type: object
+            properties:
+              phase:
+                type: string
+              observedGeneration:
+                type: integer
+              approvedAt:
+                type: string
+              rejectedAt:
+                type: string
+              rejectionReason:
+                type: string

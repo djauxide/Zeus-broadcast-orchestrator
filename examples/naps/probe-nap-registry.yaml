@@ -1,0 +1,15 @@
+apiVersion: core.zeus.broadcast/v1alpha1
+kind: NAPRegistry
+metadata:
+  name: vision-mixer-reg
+  namespace: default
+spec:
+  napName: vision-mixer-1
+  napVersion: 2.1.0
+  napImage: ghcr.io/zeus-broadcast/vision-mixer:2.1.0
+  napImageSignature: cosign:sha256:abc123def456
+  napType: vision-mixer
+  napDescription: Vision mixer NAP for football broadcast
+  conformanceResult: accepted
+  submitter: broadcast-engineering
+  submitterContact: broadcast-team@zeus.broadcast
