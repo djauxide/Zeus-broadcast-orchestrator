@@ -694,6 +694,34 @@
                     <div class="card-value" id="registryCount">--</div>
                     <div class="card-value small" id="registryDelta"></div>
                 </div>
+                <div class="stat-card">
+                    <div class="card-header">
+                        <span class="card-label">BGP Path</span>
+                    </div>
+                    <div class="card-value" id="bgpPhase">--</div>
+                    <div class="card-value small" id="bgpDetails">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="card-header">
+                        <span class="card-label">IGMP</span>
+                    </div>
+                    <div class="card-value" id="igmpPhase">--</div>
+                    <div class="card-value small" id="igmpDetails">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="card-header">
+                        <span class="card-label">SRT</span>
+                    </div>
+                    <div class="card-value" id="srtPhase">--</div>
+                    <div class="card-value small" id="srtDetails">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="card-header">
+                        <span class="card-label">RIST</span>
+                    </div>
+                    <div class="card-value" id="ristPhase">--</div>
+                    <div class="card-value small" id="ristDetails">--</div>
+                </div>
             </div>
 
             <!-- Runbooks Section -->
@@ -846,6 +874,46 @@
         <footer>
             <span>Zeus Broadcast Orchestrator · Materialized from README spec</span>
             <span>UI Server v1.0.0</span>
+            </div>
+
+            <!-- Device Control Section -->
+            <div class="section">
+                <div class="section-header">
+                    <span class="icon">🎛️</span>
+                    Device Control
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Device</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deviceControlBody">
+                            <tr>
+                                <td colspan="5" class="empty-state">
+                                    <div class="icon">🔧</div>
+                                    <div>No devices configured</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="step-group">
+                        <label>Quick Commands:</label>
+                        <button class="step-btn" onclick="sendCameraCommand('play')">▶ Play</button>
+                        <button class="step-btn" onclick="sendCameraCommand('stop')">■ Stop</button>
+                        <button class="step-btn" onclick="sendCameraCommand('record')">⏺ Record</button>
+                        <button class="step-btn" onclick="sendAudioCommand('mute')">🔇 Mute</button>
+                        <button class="step-btn" onclick="sendAudioCommand('unmute')">🔊 Unmute</button>
+                        <button class="step-btn" onclick="sendCameraCommand('zoomIn')">🔍 Zoom In</button>
+                        <button class="step-btn" onclick="sendCameraCommand('zoomOut')">🔍 Zoom Out</button>
+                    </div>
+                </div>
+            </div>
+
         </footer>
     </div>
 
@@ -1084,8 +1152,83 @@
                 loadStats(),
                 loadRunbooks(),
                 loadNAPs(),
-                loadNAPRegistry()
+                loadNAPRegistry(),
+                loadDeviceControl()
             ]);
+        }
+
+        async function loadDeviceControl() {
+            const tbody = document.getElementById('deviceControlBody');
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><div class="icon">⏳</div><div>Loading devices...</div></td></tr>';
+
+            try {
+                const data = await fetchAPI('/api/v1/devices');
+                tbody.innerHTML = '';
+
+                if (!data.devices || data.devices.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><div class="icon">📭</div><div>No devices found</div></td></tr>';
+                } else {
+                    data.devices.forEach(device => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td><code>${escapeHtml(device.name)}</code></td>
+                            <td>${escapeHtml(device.type || '—')}</td>
+                            <td>${phaseBadge(device.state || 'unknown')}</td>
+                            <td>
+                                <button class="step-btn" onclick="sendDeviceCommand('${escapeHtml(device.id)}', 'play')">▶ Play</button>
+                                <button class="step-btn" onclick="sendDeviceCommand('${escapeHtml(device.id)}', 'stop')">■ Stop</button>
+                                <button class="step-btn" onclick="sendDeviceCommand('${escapeHtml(device.id)}', 'status')">ℹ️ Status</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><div class="icon">⚠️</div><div>Error loading devices: ' + escapeHtml(err.message) + '</div></td></tr>';
+            }
+        }
+
+        async function sendCameraCommand(cmd) {
+            try {
+                const response = await fetchAPI(`/api/v1/devices/camera/command`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: cmd })
+                });
+                showToast(`Camera command sent: ${cmd}`, 'success');
+                loadDeviceControl();
+            } catch (err) {
+                showToast(`Camera command failed: ${escapeHtml(err.message)}`, 'error');
+            }
+        }
+
+        async function sendAudioCommand(cmd) {
+            try {
+                const response = await fetchAPI(`/api/v1/devices/audio/command`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: cmd })
+                });
+                showToast(`Audio command sent: ${cmd}`, 'success');
+                loadDeviceControl();
+            } catch (err) {
+                showToast(`Audio command failed: ${escapeHtml(err.message)}`, 'error');
+            }
+        }
+
+        async function sendDeviceCommand(deviceId, command) {
+            try {
+                const response = await fetchAPI(`/api/v1/devices/${encodeURIComponent(deviceId)}/command`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: cmd })
+                });
+                showToast(`Command sent: ${command}`, 'success');
+                loadDeviceControl();
+            } catch (err) {
+                showToast(`Command failed: ${escapeHtml(err.message)}`, 'error');
+            }
         }
     </script>
 </body>
