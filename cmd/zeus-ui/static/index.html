@@ -803,6 +803,44 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Network Protocol Health Section -->
+            <div class="section">
+                <div class="section-header">
+                    <span class="icon">🌐</span>
+                    Network Protocol Health
+                </div>
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <div class="stat-card">
+                        <div class="card-header">
+                            <span class="card-label">BGP</span>
+                        </div>
+                        <div class="card-value" id="bgpPhase">--</div>
+                        <div class="card-value small" id="bgpDetails">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="card-header">
+                            <span class="card-label">IGMP</span>
+                        </div>
+                        <div class="card-value" id="igmpPhase">--</div>
+                        <div class="card-value small" id="igmpDetails">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="card-header">
+                            <span class="card-label">SRT</span>
+                        </div>
+                        <div class="card-value" id="srtPhase">--</div>
+                        <div class="card-value small" id="srtDetails">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="card-header">
+                            <span class="card-label">RIST</span>
+                        </div>
+                        <div class="card-value" id="ristPhase">--</div>
+                        <div class="card-value small" id="ristDetails">--</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <footer>
@@ -862,22 +900,49 @@
         async function loadStats() {
             try {
                 const data = await fetchAPI('/api/v1/stats');
-                document.getElementById('gateCount').textContent = '12';
-                document.getElementById('gateDetails').textContent = '12 pass · 0 partial';
-
-                const rb = data.runbooks || {};
-                document.getElementById('runbookCount').textContent = rb.total || 0;
-                const rbPhase = rb.phases || {};
-                document.getElementById('runbookDelta').innerHTML =
-                    `<span class="delta ${getDeltaColor(rbPhase.Live)}">${rbPhase.Live || 0} Live</span>` +
-                    `<span class="delta ${getDeltaColor(rbPhase.Reconciling)}">${rbPhase.Reconciling || 0} Reconciling</span>` +
-                    `<span class="delta ${getDeltaColor(rbPhase.Degraded)}">${rbPhase.Degraded || 0} Degraded</span>`;
-
-                document.getElementById('napCount').textContent = rb.total || 0;
-                document.getElementById('registryCount').textContent = data.registry?.total || 0;
+                applyStats(data);
             } catch (err) {
                 console.error('Failed to load stats:', err);
             }
+        }
+
+        function applyStats(data) {
+            document.getElementById('gateCount').textContent = '12';
+            document.getElementById('gateDetails').textContent = '12 pass · 0 partial';
+
+            const rb = data.runbooks || {};
+            document.getElementById('runbookCount').textContent = rb.total || 0;
+            const rbPhase = rb.phases || {};
+            document.getElementById('runbookDelta').innerHTML =
+                `<span class="delta ${getDeltaColor(rbPhase.Live)}">${rbPhase.Live || 0} Live</span>` +
+                `<span class="delta ${getDeltaColor(rbPhase.Reconciling)}">${rbPhase.Reconciling || 0} Reconciling</span>` +
+                `<span class="delta ${getDeltaColor(rbPhase.Degraded)}">${rbPhase.Degraded || 0} Degraded</span>`;
+
+            document.getElementById('napCount').textContent = rb.total || 0;
+            document.getElementById('registryCount').textContent = data.registry?.total || 0;
+
+            // Path health badges
+            const pathHealth = data.pathHealth || {};
+            document.getElementById('pathHealthPrimary').textContent = pathHealth.primary?.state || '--';
+            document.getElementById('pathHealthPrimaryRtt').textContent = pathHealth.primary?.rttMs || '--';
+            document.getElementById('pathHealthBackup').textContent = pathHealth.backup?.state || '--';
+            document.getElementById('pathHealthBackupRtt').textContent = pathHealth.backup?.rttMs || '--';
+
+            // Network protocol health badges
+            const netPaths = data.networkProtocols || {};
+            const bgp = netPaths.bgp || {};
+            const igmp = netPaths.igmp || {};
+            const srt = netPaths.srt || {};
+            const rist = netPaths.rist || {};
+
+            document.getElementById('bgpPhase').textContent = bgp.state || '--';
+            document.getElementById('bgpDetails').textContent = `${bgp.sessions || 0} sessions · ${bgp.prefixesRx || 0} rx · ${bgp.prefixesTx || 0} tx`;
+            document.getElementById('igmpPhase').textContent = igmp.state || '--';
+            document.getElementById('igmpDetails').textContent = `${igmp.groups || 0} groups · ${igmp.reportsRx || 0} reports`;
+            document.getElementById('srtPhase').textContent = srt.state || '--';
+            document.getElementById('srtDetails').textContent = `${srt.paths || 0} paths · RTT ${srt.avgRTTMs || 0}ms`;
+            document.getElementById('ristPhase').textContent = rist.state || '--';
+            document.getElementById('ristDetails').textContent = `${rist.paths || 0} paths · ${rist.profile || 0} profile`;
         }
 
         function getDeltaColor(count) {
@@ -980,9 +1045,40 @@
         // ===== Initialization =====
         document.addEventListener('DOMContentLoaded', () => {
             loadAll();
-            setInterval(loadAll, 30000);
+            
+            // Connect to SSE stream for real-time updates
+            const eventSource = new EventSource(`${API_BASE}/api/v1/events`);
+            
+            eventSource.onopen = () => {
+                console.log('SSE connected');
+                document.getElementById('statusText').textContent = 'Connected (Live)';
+                document.getElementById('statusDot').style.backgroundColor = 'var(--success)';
+                showToast('Real-time connection established', 'success');
+            };
+            
+            eventSource.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.event === 'stats') {
+                        applyStats(data.data);
+                    } else if (data.event === 'connected') {
+                        console.log('SSE handshake complete');
+                    }
+                } catch (e) {
+                    console.error('SSE parse error:', e);
+                }
+            };
+            
+            eventSource.onerror = (err) => {
+                console.error('SSE error:', err);
+                document.getElementById('statusText').textContent = 'Disconnected';
+                document.getElementById('statusDot').style.backgroundColor = 'var(--fail)';
+                showToast('Real-time connection lost - polling fallback', 'error');
+                // Fallback to polling on disconnect
+                setInterval(loadAll, 30000);
+            };
         });
-
+        
         async function loadAll() {
             await Promise.all([
                 loadStats(),
