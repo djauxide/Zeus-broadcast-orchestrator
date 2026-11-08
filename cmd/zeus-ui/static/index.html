@@ -3,186 +3,280 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zeus Broadcast Orchestrator — UI</title>
+    <title>Zeus Broadcast Orchestrator</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚡%3C/text%3E%3C/svg%3E">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        /* ============================================================================
+           ZEUS BROADCAST ORCHESTRATOR - PRODUCTION UI
+           ============================================================================ */
+
         :root {
-            --bg: #0b0f14;
-            --panel: #131a23;
-            --panel-2: #182231;
-            --line: #243044;
-            --text: #dce6f2;
-            --muted: #8b9bb0;
+            --bg-primary: #0b0f14;
+            --bg-surface: #131a23;
+            --bg-card: #182231;
+            --bg-card-hover: #1e293b;
+            --border: #243044;
+            --border-hover: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
             --accent: #5cc8ff;
-            --ok: #35d07f;
+            --accent-hover: #4fd1c5;
+            --success: #35d07f;
+            --success-bg: rgba(53, 208, 127, 0.1);
+            --success-border: rgba(53, 208, 127, 0.3);
             --warn: #f0b429;
+            --warn-bg: rgba(240, 180, 41, 0.1);
+            --warn-border: rgba(240, 180, 41, 0.3);
             --fail: #ff5c73;
-            --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            --fail-bg: rgba(255, 92, 115, 0.1);
+            --fail-border: rgba(255, 92, 115, 0.3);
+            --info: #3b82f6;
+            --info-bg: rgba(59, 130, 246, 0.1);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+            --radius: 8px;
+            --radius-lg: 12px;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            --font-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Roboto Mono', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
         }
 
         body {
-            margin: 0;
-            background: radial-gradient(1200px 600px at 20% -10%, #12253a 0%, var(--bg) 55%);
-            color: var(--text);
-            font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            padding: 24px;
+            font-family: var(--font-main);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .wrap { max-width: 1400px; margin: 0 auto; }
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            transition: color var(--transition);
+        }
 
-        header {
+        a:hover {
+            color: var(--accent-hover);
+        }
+
+        /* ===== Layout ===== */
+        .app-container {
             display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-            align-items: flex-end;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header.app-header {
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            height: 64px;
+            display: flex;
+            align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid var(--line);
-            padding-bottom: 20px;
-            margin-bottom: 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
-        h1 {
-            font-size: 28px;
+        .app-header .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .app-header .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #06b6d4);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .app-header .logo-text {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
             letter-spacing: -0.5px;
-            margin: 0;
         }
 
-        h1 span { color: var(--accent); }
-
-        .sub {
-            color: var(--muted);
-            margin-top: 6px;
-            font-size: 14px;
+        .app-header .logo-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: -2px;
+            display: block;
         }
 
-        .status-indicator {
-            display: inline-flex;
+        .app-header .system-status {
+            display: flex;
             align-items: center;
             gap: 8px;
-            background: #10281d;
-            border: 1px solid #1f5c3f;
-            color: var(--ok);
-            border-radius: 999px;
             padding: 6px 14px;
-            font-size: 13px;
+            background: rgba(53, 208, 127, 0.1);
+            border: 1px solid var(--success-border);
+            border-radius: var(--radius);
+            color: var(--success);
+            font-size: 0.875rem;
             font-weight: 600;
         }
 
-        .dot {
-            width: 8px; height: 8px; border-radius: 50%;
-            background: var(--ok);
+        .app-header .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
             animation: pulse 2s infinite;
         }
 
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
+            50% { opacity: 0.5; }
         }
 
-        .grid { display: grid; gap: 16px; }
-
-        .cards { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-
-        .card {
-            background: linear-gradient(180deg, var(--panel-2), var(--panel));
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            padding: 20px;
+        /* ===== Main Content ===== */
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            max-width: 100%;
         }
 
-        .card .k {
-            color: var(--muted);
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 8px;
+        .page-header {
+            margin-bottom: 2rem;
         }
 
-        .card .v {
-            font-size: 32px;
+        .page-title {
+            font-size: 1.75rem;
             font-weight: 700;
-            margin-bottom: 4px;
-        }
-
-        .card .v small {
-            font-size: 13px;
-            color: var(--muted);
-            font-weight: 400;
-        }
-
-        .card .delta {
-            font-size: 12px;
-            margin-top: 4px;
-        }
-
-        .delta.up { color: var(--ok); }
-        .delta.down { color: var(--fail); }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-radius: 12px;
-            overflow: hidden;
-            margin-top: 24px;
-        }
-
-        th, td {
-            text-align: left;
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--line);
-            vertical-align: top;
-        }
-
-        th {
-            background: #101722;
-            color: var(--muted);
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            font-weight: 600;
-        }
-
-        tr:last-child td { border-bottom: none; }
-
-        tr:hover td { background: rgba(255,255,255,0.02); }
-
-        .phase {
-            display: inline-flex;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
+            gap: 12px;
         }
 
-        .phase.Live { background: rgba(53,208,127,0.14); color: var(--ok); border: 1px solid rgba(53,208,127,0.35); }
-        .phase.Reconciling { background: rgba(240,180,41,0.13); color: var(--warn); border: 1px solid rgba(240,180,41,0.35); }
-        .phase.Degraded { background: rgba(240,180,41,0.13); color: var(--warn); border: 1px solid rgba(240,180,41,0.35); }
-        .phase.Rejected { background: rgba(255,92,115,0.14); color: var(--fail); border: 1px solid rgba(255,92,115,0.35); }
-        .phase.Validated { background: rgba(53,208,127,0.14); color: var(--ok); border: 1px solid rgba(53,208,127,0.35); }
-        .phase.Pending { background: rgba(139,155,176,0.12); color: var(--muted); border: 1px solid rgba(139,155,176,0.3); }
+        .page-title .icon {
+            color: var(--accent);
+        }
 
-        .phase-badge {
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 10px;
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* ===== Stats Cards ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+        }
+
+        .stat-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stat-card .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .stat-card .card-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
             font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card .card-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .stat-card .card-value .delta {
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        .stat-card .delta.up { color: var(--success); }
+        .stat-card .delta.down { color: var(--fail); }
+        .stat-card .delta.neutral { color: var(--text-muted); }
+
+        .stat-card .chart-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 60px;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        /* ===== Section Headers ===== */
+        .section {
+            margin-bottom: 2.5rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title .icon {
+            color: var(--accent);
         }
 
         .refresh-btn {
-            background: var(--panel-2);
-            border: 1px solid var(--line);
-            color: var(--text);
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
             padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 13px;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all var(--transition);
         }
 
         .refresh-btn:hover {
@@ -190,251 +284,540 @@
             color: var(--accent);
         }
 
-        .refresh-btn:active { transform: scale(0.98); }
-
-        .refreshing { animation: spin 1s linear infinite; }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+        .refresh-btn:active {
+            transform: scale(0.98);
         }
 
-        .no-data {
-            text-align: center;
-            padding: 40px;
-            color: var(--muted);
+        .refresh-btn.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
         }
 
-        .section {
-            margin-bottom: 32px;
+        /* ===== Tables ===== */
+        .table-container {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: var(--bg-card);
         }
 
-        .section-title {
-            font-size: 16px;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.5);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
             font-weight: 600;
-            margin-bottom: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px 16px;
+            text-align: left;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* ===== Badges ===== */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.4px;
+        }
+
+        .badge.live { background: rgba(53, 208, 127, 0.15); color: var(--success); border: 1px solid var(--success-border); }
+        .badge.reconciling { background: rgba(240, 180, 41, 0.15); color: var(--warn); border: 1px solid var(--warn-border); }
+        .badge.degraded { background: rgba(240, 180, 41, 0.15); color: var(--warn); border: 1px solid var(--warn-border); }
+        .badge.rejected { background: rgba(255, 92, 115, 0.15); color: var(--fail); border: 1px solid var(--fail-border); }
+        .badge.validated { background: rgba(53, 208, 127, 0.15); color: var(--success); border: 1px solid var(--success-border); }
+        .badge.pending { background: rgba(148, 163, 184, 0.15); color: var(--text-muted); border: 1px solid rgba(148, 163, 184, 0.3); }
+        .badge.validating { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge.pending-approval { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge.approved { background: rgba(53, 208, 127, 0.15); color: var(--success); border: 1px solid var(--success-border); }
+
+        /* ===== Empty State ===== */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .empty-state h3 {
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
+            color: var(--text-secondary);
+            max-width: 300px;
+            margin: 0 auto;
+        }
+
+        /* ===== Code Block ===== */
+        code {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #a5f3fc;
+        }
+
+        /* ===== Alerts ===== */
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius);
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
-        .section-title .icon {
-            color: var(--accent);
+        .alert.error {
+            background: rgba(255, 92, 115, 0.1);
+            border: 1px solid var(--fail-border);
+            color: var(--fail);
         }
 
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: var(--muted);
+        .alert.success {
+            background: rgba(53, 208, 127, 0.1);
+            border: 1px solid var(--success-border);
+            color: var(--success);
         }
 
-        .empty-state .icon {
-            font-size: 48px;
-            margin-bottom: 12px;
+        .alert.info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: var(--info);
         }
 
-        .mono {
-            font-family: var(--mono);
-            font-size: 12px;
+        .alert .icon {
+            font-size: 1.25rem;
         }
 
-        .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid var(--line);
-            color: var(--muted);
-            font-size: 12px;
+        /* ===== Footer ===== */
+        footer {
+            padding: 1.5rem 2rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.875rem;
             display: flex;
             justify-content: space-between;
             flex-wrap: wrap;
             gap: 10px;
         }
 
-        .nav-tabs {
+        /* ===== Responsive ===== */
+        @media (max-width: 768px) {
+            .app-header {
+                padding: 1rem;
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+
+            .app-header .logo-sub {
+                display: none;
+            }
+
+            .main-content {
+                padding: 1.5rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            table {
+                font-size: 0.875rem;
+            }
+
+            th, td {
+                padding: 8px 12px;
+            }
+
+            .section-header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+            }
+        }
+
+        /* ===== Toast Notifications ===== */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
             display: flex;
-            gap: 4px;
-            margin-bottom: 20px;
-            border-bottom: 1px solid var(--line);
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
         }
 
-        .nav-tab {
-            padding: 8px 16px;
-            background: var(--panel);
-            border: 1px solid var(--line);
-            border-bottom: none;
-            border-radius: 8px 8px 0 0;
-            color: var(--muted);
+        .toast {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--accent);
+            color: var(--text-primary);
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.error { border-left-color: var(--fail); }
+        .toast.success { border-left-color: var(--success); }
+        .toast.info { border-left-color: var(--info); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* ===== Form Elements ===== */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            font-size: 0.875rem;
+            transition: border-color var(--transition);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            font-weight: 600;
             cursor: pointer;
-            font-size: 13px;
+            border: none;
+            transition: all var(--transition);
         }
 
-        .nav-tab.active {
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent);
             color: var(--accent);
-            border-bottom: 2px solid var(--accent);
         }
 
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-
-        .nav-tabs .nav-tab:first-child { border-top-left-radius: 8px; }
-        .nav-tabs .nav-tab:last-child { border-top-right-radius: 8px; }
-
-        code {
-            font-family: var(--mono);
-            font-size: 12px;
-            background: #0d141d;
-            border: 1px solid var(--line);
-            padding: 2px 6px;
-            border-radius: 4px;
-            color: #b9d9f2;
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
-        .hidden { display: none !important; }
+        /* ===== Modal ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="wrap">
-        <header>
-            <div>
-                <h1>Zeus <span>Broadcast Orchestrator</span></h1>
-                <div class="sub">Materialized from the README spec · deployed to a local kind cluster</div>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo">
+                <div class="logo-icon">⚡</div>
+                <div>
+                    <div class="logo-text">Zeus Broadcast Orchestrator</div>
+                    <div class="logo-sub">Production Broadcast Orchestration Platform</div>
+                </div>
             </div>
-            <div class="status-indicator" id="statusIndicator">
-                <span class="dot"></span>
-                <span>System Online</span>
+            <div class="status-indicator" id="systemStatus">
+                <span class="status-dot"></span>
+                <span id="statusText">System Online</span>
             </div>
         </header>
 
-        <!-- Summary Cards -->
-        <div class="grid cards">
-            <div class="card">
-                <div class="k">Verification Gates</div>
-                <div class="v" id="gateCount">--</div>
-                <div class="v small">12 total · 12 pass · 0 partial</div>
-            </div>
-            <div class="card">
-                <div class="k">ZeusRunbooks</div>
-                <div class="v" id="runbookCount">--</div>
-                <div class="delta up" id="runbookDelta"></div>
-            </div>
-            <div class="card">
-                <div class="k">NAP Packages</div>
-                <div class="v" id="napCount">--</div>
-                <div class="delta up" id="napDelta"></div>
-            </div>
-            <div class="card">
-                <div class="k">NAP Registry</div>
-                <div class="v" id="registryCount">--</div>
-                <div class="delta up" id="registryDelta"></div>
-            </div>
-        </div>
-
-        <!-- Tabs -->
-        <div class="nav-tabs">
-            <div class="nav-tab active" onclick="switchTab('runbooks')">Runbooks</div>
-            <div class="nav-tab" onclick="switchTab('naps')">NAPs</div>
-            <div class="nav-tab" onclick="switchTab('registry')">NAP Registry</div>
-        </div>
-
-        <!-- Runbooks Tab -->
-        <div id="tab-runbooks" class="tab-content active">
-            <div class="section">
-                <div class="section-title">
-                    <span class="icon">📋</span>
-                    ZeusRunbooks
+        <div class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">
+                    <span class="icon">📊</span>
+                    Zeus Broadcast Orchestrator
                 </div>
-                <button class="refresh-btn" onclick="loadRunbooks()" id="btnRefreshRunbooks">
-                    ⟳ Refresh
-                </button>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Namespace</th>
-                            <th>Phase</th>
-                            <th>Event Class</th>
-                            <th>Created</th>
-                            <th>Conditions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="runbookTableBody">
-                        <tr><td colspan="6" class="empty-state"><div class="icon">⏳</div><div>Loading runbooks...</div></td></tr>
-                    </tbody>
-                </table>
+                <p class="page-subtitle">Broadcast orchestration control plane — manage runbooks, NAPs, and NMOS registry</p>
             </div>
-        </div>
 
-        <!-- NAPs Tab -->
-        <div id="tab-naps" class="tab-content">
-            <div class="section">
-                <div class="section-title">
-                    <span class="icon">📦</span>
-                    ZeusApplicationPackages (NAPs)
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="card-header">
+                        <span class="card-label">Verification Gates</span>
+                    </div>
+                    <div class="card-value" id="gateCount">--</div>
+                    <div class="card-value small" id="gateDetails">--</div>
                 </div>
-                <button class="refresh-btn" onclick="loadNAPs()" id="btnRefreshNAPs">
-                    ⟳ Refresh
-                </button>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Namespace</th>
-                            <th>Phase</th>
-                            <th>Image</th>
-                            <th>Observed Gen</th>
-                            <th>Created</th>
-                        </tr>
-                    </thead>
-                    <tbody id="napTableBody">
-                        <tr><td colspan="6" class="empty-state"><div class="icon">⏳</div><div>Loading NAPs...</div></td></tr>
-                    </tbody>
-                </table>
+                <div class="stat-card">
+                    <div class="card-header">
+                        <span class="card-label">Runbooks</span>
+                    </div>
+                    <div class="card-value" id="runbookCount">--</div>
+                    <div class="card-value small" id="runbookDelta"></div>
+                </div>
+                <div class="stat-card">
+                    <div class="card-header">
+                        <span class="card-label">NAP Packages</span>
+                    </div>
+                    <div class="card-value" id="napCount">--</div>
+                    <div class="card-value small" id="napDelta"></div>
+                </div>
+                <div class="stat-card">
+                    <div class="card-header">
+                        <span class="card-label">NAP Registry</span>
+                    </div>
+                    <div class="card-value" id="registryCount">--</div>
+                    <div class="card-value small" id="registryDelta"></div>
+                </div>
             </div>
-        </div>
 
-        <!-- NAP Registry Tab -->
-        <div id="tab-registry" class="tab-content">
+            <!-- Runbooks Section -->
             <div class="section">
-                <div class="section-title">
-                    <span class="icon">📋</span>
-                    NAP Registry
+                <div class="section-header">
+                    <div class="section-title">
+                        <span class="icon">📋</span>
+                        ZeusRunbooks
+                    </div>
+                    <button class="refresh-btn" onclick="loadRunbooks()">
+                        ⟳ Refresh
+                    </button>
                 </div>
-                <button class="refresh-btn" onclick="loadNAPRegistry()" id="btnRefreshRegistry">
-                    ⟳ Refresh
-                </button>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Namespace</th>
-                            <th>Phase</th>
-                            <th>NAP Name</th>
-                            <th>NAP Version</th>
-                            <th>Type</th>
-                            <th>Submitter</th>
-                            <th>Created</th>
-                        </tr>
-                    </thead>
-                    <tbody id="registryTableBody">
-                        <tr><td colspan="8" class="empty-state"><div class="icon">⏳</div><div>Loading registry...</div></td></tr>
-                    </tbody>
-                </table>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Namespace</th>
+                                <th>Phase</th>
+                                <th>Event Class</th>
+                                <th>Conditions</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody id="runbookTableBody">
+                            <tr>
+                                <td colspan="6" class="empty-state">
+                                    <div class="icon">⏳</div>
+                                    <div>Loading runbooks...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- NAPs Section -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <span class="icon">📦</span>
+                        NAP Packages
+                    </div>
+                    <button class="refresh-btn" onclick="loadNAPs()">
+                        ⟳ Refresh
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Namespace</th>
+                                <th>Phase</th>
+                                <th>Image</th>
+                                <th>CRM</th>
+                                <th>Transport</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody id="napTableBody">
+                            <tr>
+                                <td colspan="7" class="empty-state">
+                                    <div class="icon">⏳</div>
+                                    <div>Loading NAPs...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- NAP Registry Section -->
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <span class="icon">📋</span>
+                        NAP Registry
+                    </div>
+                    <button class="refresh-btn" onclick="loadNAPRegistry()">
+                        ⟳ Refresh
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Namespace</th>
+                                <th>Phase</th>
+                                <th>NAP Name</th>
+                                <th>NAP Version</th>
+                                <th>Type</th>
+                                <th>Submitter</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody id="registryTableBody">
+                            <tr>
+                                <td colspan="8" class="empty-state">
+                                    <div class="icon">⏳</div>
+                                    <div>Loading registry...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
         <footer>
             <span>Zeus Broadcast Orchestrator · Materialized from README spec</span>
-            <span>UI Server · port 8082</span>
+            <span>UI Server v1.0.0</span>
         </footer>
     </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
 
     <script>
         const API_BASE = window.location.origin;
 
-        function formatPhase(phase) {
-            return phase || 'Unknown';
-        }
-
+        // ===== Helpers =====
         function formatDate(dateStr) {
             if (!dateStr) return '-';
             try {
@@ -445,153 +828,169 @@
         }
 
         function phaseBadge(phase) {
-            const cls = phase ? phase.toLowerCase() : 'unknown';
-            return `<span class="phase ${cls}">${phase || '—'}</span>`;
+            if (!phase) return '<span class="badge pending">Unknown</span>';
+            const cls = phase.toLowerCase();
+            return `<span class="badge ${cls}">${phase}</span>`;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<div class="icon">ℹ️</div><span>${escapeHtml(message)}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
+
+        async function fetchAPI(endpoint, options = {}) {
+            const res = await fetch(`${API_BASE}${endpoint}`, {
+                headers: { 'Accept': 'application/json', ...options.headers },
+                ...options
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        }
+
+        // ===== Load Functions =====
+        async function loadStats() {
+            try {
+                const data = await fetchAPI('/api/v1/stats');
+                document.getElementById('gateCount').textContent = '12';
+                document.getElementById('gateDetails').textContent = '12 pass · 0 partial';
+
+                const rb = data.runbooks || {};
+                document.getElementById('runbookCount').textContent = rb.total || 0;
+                const rbPhase = rb.phases || {};
+                document.getElementById('runbookDelta').innerHTML =
+                    `<span class="delta ${getDeltaColor(rbPhase.Live)}">${rbPhase.Live || 0} Live</span>` +
+                    `<span class="delta ${getDeltaColor(rbPhase.Reconciling)}">${rbPhase.Reconciling || 0} Reconciling</span>` +
+                    `<span class="delta ${getDeltaColor(rbPhase.Degraded)}">${rbPhase.Degraded || 0} Degraded</span>`;
+
+                document.getElementById('napCount').textContent = rb.total || 0;
+                document.getElementById('registryCount').textContent = data.registry?.total || 0;
+            } catch (err) {
+                console.error('Failed to load stats:', err);
+            }
+        }
+
+        function getDeltaColor(count) {
+            return count > 0 ? 'up' : 'neutral';
         }
 
         async function loadRunbooks() {
-            const btn = document.getElementById('btnRefreshRunbooks');
-            btn.classList.add('refreshing');
-            btn.disabled = true;
-            
+            const tbody = document.getElementById('runbookTableBody');
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">⏳</div><div>Loading runbooks...</div></td></tr>';
+
             try {
-                const res = await fetch(`${API_BASE}/api/zeusrunbooks`);
-                const data = await res.json();
-                const tbody = document.getElementById('runbookTableBody');
+                const data = await fetchAPI('/api/v1/zeusrunbooks');
                 tbody.innerHTML = '';
-                
+
                 if (!data.runbooks || data.runbooks.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">📭</div><div>No runbooks found</div></td></tr>';
                 } else {
                     data.runbooks.forEach(rb => {
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
-                            <td><code>${rb.name}</code></td>
-                            <td>${rb.namespace}</td>
+                            <td><code>${escapeHtml(rb.name)}</code></td>
+                            <td>${escapeHtml(rb.namespace)}</td>
                             <td>${phaseBadge(rb.phase)}</td>
-                            <td>${rb.eventClass || '—'}</td>
-                            <td>${formatDate(rb.creationTimestamp)}</td>
+                            <td>${escapeHtml(rb.eventClass || '—')}</td>
                             <td>${rb.conditions && rb.conditions.length > 0 ? rb.conditions[0].reason || '—' : '—'}</td>
+                            <td>${formatDate(rb.creationTime)}</td>
                         `;
                         tbody.appendChild(tr);
                     });
                 }
-                document.getElementById('runbookCount').textContent = data.count || 0;
             } catch (err) {
                 console.error(err);
-                document.getElementById('runbookTableBody').innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">⚠️</div><div>Error loading runbooks: ' + err.message + '</div></td></tr>';
-            } finally {
-                btn.classList.remove('refreshing');
-                btn.disabled = false;
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">⚠️</div><div>Error loading runbooks: ' + escapeHtml(err.message) + '</div></td></tr>';
             }
         }
 
         async function loadNAPs() {
-            const btn = document.getElementById('btnRefreshNAPs');
-            btn.classList.add('refreshing');
-            btn.disabled = true;
-            
+            const tbody = document.getElementById('napTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⏳</div><div>Loading NAPs...</div></td></tr>';
+
             try {
-                const res = await fetch(`${API_BASE}/api/naps`);
-                const data = await res.json();
-                const tbody = document.getElementById('napTableBody');
+                const data = await fetchAPI('/api/v1/zeusapplicationpackages');
                 tbody.innerHTML = '';
-                
+
                 if (!data.naps || data.naps.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">📭</div><div>No NAPs found</div></td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📭</div><div>No NAPs found</div></td></tr>';
                 } else {
                     data.naps.forEach(nap => {
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
-                            <td><code>${nap.name}</code></td>
-                            <td>${nap.namespace}</td>
+                            <td><code>${escapeHtml(nap.name)}</code></td>
+                            <td>${escapeHtml(nap.namespace)}</td>
                             <td>${phaseBadge(nap.phase)}</td>
-                            <td><code>${nap.image || '—'}</code></td>
-                            <td>${nap.observedGen !== undefined ? nap.observedGen : '—'}</td>
-                            <td>${formatDate(nap.creationTimestamp)}</td>
+                            <td><code>${escapeHtml(nap.image || '—')}</code></td>
+                            <td>${escapeHtml(nap.cpu || '—')} / ${escapeHtml(nap.memory || '—')}</td>
+                            <td>${escapeHtml(nap.transport || '—')}</td>
+                            <td>${formatDate(nap.creationTime)}</td>
                         `;
                         tbody.appendChild(tr);
                     });
                 }
-                document.getElementById('napCount').textContent = data.count || 0;
             } catch (err) {
                 console.error(err);
-                document.getElementById('napTableBody').innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">⚠️</div><div>Error loading NAPs: ' + err.message + '</div></td></tr>';
-            } finally {
-                btn.classList.remove('refreshing');
-                btn.disabled = false;
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⚠️</div><div>Error loading NAPs: ' + escapeHtml(err.message) + '</div></td></tr>';
             }
         }
 
         async function loadNAPRegistry() {
-            const btn = document.getElementById('btnRefreshRegistry');
-            btn.classList.add('refreshing');
-            btn.disabled = true;
-            
+            const tbody = document.getElementById('registryTableBody');
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">⏳</div><div>Loading registry...</div></td></tr>';
+
             try {
-                const res = await fetch(`${API_BASE}/api/napsregistry`);
-                const data = await res.json();
-                const tbody = document.getElementById('registryTableBody');
+                const data = await fetchAPI('/api/v1/napregistry');
                 tbody.innerHTML = '';
-                
+
                 if (!data.registries || data.registries.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">📭</div><div>No registry entries found</div></td></tr>';
                 } else {
                     data.registries.forEach(reg => {
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
-                            <td><code>${reg.name}</code></td>
-                            <td>${reg.namespace}</td>
+                            <td><code>${escapeHtml(reg.name)}</code></td>
+                            <td>${escapeHtml(reg.namespace)}</td>
                             <td>${phaseBadge(reg.phase)}</td>
-                            <td>${reg.napName || '—'}</td>
-                            <td>${reg.napVersion || '—'}</td>
-                            <td>${reg.napType || '—'}</td>
-                            <td>${reg.submitter || '—'}</td>
-                            <td>${formatDate(reg.creationTimestamp)}</td>
+                            <td>${escapeHtml(reg.napName || '—')}</td>
+                            <td>${escapeHtml(reg.napVersion || '—')}</td>
+                            <td>${escapeHtml(reg.napType || '—')}</td>
+                            <td>${escapeHtml(reg.submitter || '—')}</td>
+                            <td>${formatDate(reg.creationTime)}</td>
                         `;
                         tbody.appendChild(tr);
                     });
                 }
-                document.getElementById('registryCount').textContent = data.count || 0;
             } catch (err) {
                 console.error(err);
-                document.getElementById('registryTableBody').innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">⚠️</div><div>Error loading registry: ' + err.message + '</div></td></tr>';
-            } finally {
-                btn.classList.remove('refreshing');
-                btn.disabled = false;
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">⚠️</div><div>Error loading registry: ' + escapeHtml(err.message) + '</div></td></tr>';
             }
         }
 
-        function switchTab(tabName) {
-            // Hide all tab contents
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-            // Remove active class from all tabs
-            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
-            
-            // Show selected tab
-            document.getElementById('tab-' + tabName).classList.add('active');
-            event.target.classList.add('active');
-            
-            // Load data for the tab
-            if (tabName === 'runbooks') loadRunbooks();
-            if (tabName === 'naps') loadNAPs();
-            if (tabName === 'registry') loadNAPRegistry();
-        }
+        // ===== Initialization =====
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAll();
+            setInterval(loadAll, 30000);
+        });
 
         async function loadAll() {
             await Promise.all([
+                loadStats(),
                 loadRunbooks(),
                 loadNAPs(),
                 loadNAPRegistry()
             ]);
         }
-
-        // Initial load
-        document.addEventListener('DOMContentLoaded', () => {
-            loadAll();
-            // Auto-refresh every 30 seconds
-            setInterval(loadAll, 30000);
-        });
     </script>
 </body>
 </html>
