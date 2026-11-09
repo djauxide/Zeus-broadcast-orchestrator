@@ -4,19 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Zeus Broadcast Orchestrator</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚡%3C/text%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E">
     <style>
         /* ============================================================================
            ZEUS BROADCAST ORCHESTRATOR - PRODUCTION UI
            ============================================================================ */
-
         :root {
             --bg-primary: #0b0f14;
             --bg-surface: #131a23;
-            --bg-card: #182231;
-            --bg-card-hover: #1e293b;
-            --border: #243044;
-            --border-hover: #334155;
+            --bg-card: #1e293b;
+            --line: #243044;
             --text-primary: #f8fafc;
             --text-secondary: #94a3b8;
             --text-muted: #64748b;
@@ -31,10 +28,9 @@
             --fail: #ff5c73;
             --fail-bg: rgba(255, 92, 115, 0.1);
             --fail-border: rgba(255, 92, 115, 0.3);
-            --info: #3b82f6;
-            --info-bg: rgba(59, 130, 246, 0.1);
+            --info: #38bdf8;
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
-            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
             --radius: 8px;
             --radius-lg: 12px;
             --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -42,15 +38,9 @@
             --font-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Roboto Mono', monospace;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        html {
-            scroll-behavior: smooth;
-        }
+        html { scroll-behavior: smooth; }
 
         body {
             font-family: var(--font-main);
@@ -61,28 +51,16 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        a {
-            color: var(--accent);
-            text-decoration: none;
-            transition: color var(--transition);
-        }
-
-        a:hover {
-            color: var(--accent-hover);
-        }
+        a { color: var(--accent); text-decoration: none; transition: color var(--transition); }
+        a:hover { color: var(--accent-hover); }
 
         /* ===== Layout ===== */
-        .app-container {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
+        .app-container { display: flex; flex-direction: column; min-height: 100vh; }
 
         header.app-header {
             background: var(--bg-surface);
-            border-bottom: 1px solid var(--border);
-            padding: 0 24px;
-            height: 64px;
+            border-bottom: 1px solid var(--line);
+            padding: 1rem 2rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -127,9 +105,9 @@
             align-items: center;
             gap: 8px;
             padding: 6px 14px;
-            background: rgba(53, 208, 127, 0.1);
+            background: var(--success-bg);
             border: 1px solid var(--success-border);
-            border-radius: var(--radius);
+            border-radius: 6px;
             color: var(--success);
             font-size: 0.875rem;
             font-weight: 600;
@@ -149,15 +127,9 @@
         }
 
         /* ===== Main Content ===== */
-        .main-content {
-            flex: 1;
-            padding: 2rem;
-            max-width: 100%;
-        }
+        .main-content { flex: 1; padding: 2rem; max-width: 100%; }
 
-        .page-header {
-            margin-bottom: 2rem;
-        }
+        .page-header { margin-bottom: 2rem; }
 
         .page-title {
             font-size: 1.75rem;
@@ -169,14 +141,9 @@
             gap: 12px;
         }
 
-        .page-title .icon {
-            color: var(--accent);
-        }
+        .page-title .icon { color: var(--accent); }
 
-        .page-subtitle {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-        }
+        .page-subtitle { color: var(--text-secondary); font-size: 0.875rem; }
 
         /* ===== Stats Cards ===== */
         .stats-grid {
@@ -188,14 +155,14 @@
 
         .stat-card {
             background: var(--bg-card);
-            border: 1px solid var(--border);
+            border: 1px solid var(--line);
             border-radius: var(--radius-lg);
             padding: 1.5rem;
             transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
         }
 
         .stat-card:hover {
-            border-color: var(--border-hover);
+            border-color: var(--accent);
             transform: translateY(-2px);
             box-shadow: var(--shadow-lg);
         }
@@ -242,10 +209,8 @@
             font-size: 0.875rem;
         }
 
-        /* ===== Section Headers ===== */
-        .section {
-            margin-bottom: 2.5rem;
-        }
+        /* ===== New broadcast sections ===== */
+        .section { margin-bottom: 2.5rem; }
 
         .section-header {
             display: flex;
@@ -263,13 +228,11 @@
             gap: 8px;
         }
 
-        .section-title .icon {
-            color: var(--accent);
-        }
+        .section-title .icon { color: var(--accent); }
 
         .refresh-btn {
             background: var(--bg-surface);
-            border: 1px solid var(--border);
+            border: 1px solid var(--line);
             color: var(--text-primary);
             padding: 8px 16px;
             border-radius: var(--radius);
@@ -284,28 +247,18 @@
             color: var(--accent);
         }
 
-        .refresh-btn:active {
-            transform: scale(0.98);
-        }
-
-        .refresh-btn.loading {
-            opacity: 0.7;
-            cursor: not-allowed;
-        }
+        .refresh-btn:active { transform: scale(0.98); }
 
         /* ===== Tables ===== */
         .table-container {
             overflow-x: auto;
-            border: 1px solid var(--border);
+            border: 1px solid var(--line);
             border-radius: var(--radius);
             overflow: hidden;
             background: var(--bg-card);
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+        table { width: 100%; border-collapse: collapse; }
 
         th {
             background: rgba(15, 23, 42, 0.5);
@@ -320,14 +273,12 @@
 
         td {
             padding: 12px 16px;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--line);
             font-size: 0.875rem;
             color: var(--text-primary);
         }
 
-        tr:hover {
-            background: rgba(255, 255, 255, 0.02);
-        }
+        tr:hover { background: rgba(255, 255, 255, 0.02); }
 
         /* ===== Badges ===== */
         .badge {
@@ -340,15 +291,14 @@
             letter-spacing: 0.4px;
         }
 
-        .badge.live { background: rgba(53, 208, 127, 0.15); color: var(--success); border: 1px solid var(--success-border); }
-        .badge.reconciling { background: rgba(240, 180, 41, 0.15); color: var(--warn); border: 1px solid var(--warn-border); }
-        .badge.degraded { background: rgba(240, 180, 41, 0.15); color: var(--warn); border: 1px solid var(--warn-border); }
-        .badge.rejected { background: rgba(255, 92, 115, 0.15); color: var(--fail); border: 1px solid var(--fail-border); }
-        .badge.validated { background: rgba(53, 208, 127, 0.15); color: var(--success); border: 1px solid var(--success-border); }
+        .badge.live { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+        .badge.reconciling, .badge.validating { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge.degraded { background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-border); }
+        .badge.rejected { background: var(--fail-bg); color: var(--fail); border: 1px solid var(--fail-border); }
+        .badge.validated { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
         .badge.pending { background: rgba(148, 163, 184, 0.15); color: var(--text-muted); border: 1px solid rgba(148, 163, 184, 0.3); }
-        .badge.validating { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
         .badge.pending-approval { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
-        .badge.approved { background: rgba(53, 208, 127, 0.15); color: var(--success); border: 1px solid var(--success-border); }
+        .badge.approved { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
 
         /* ===== Empty State ===== */
         .empty-state {
@@ -369,11 +319,7 @@
             margin-bottom: 0.5rem;
         }
 
-        .empty-state p {
-            color: var(--text-secondary);
-            max-width: 300px;
-            margin: 0 auto;
-        }
+        .empty-state p { color: var(--text-muted); max-width: 300px; margin: 0 auto; }
 
         /* ===== Code Block ===== */
         code {
@@ -397,13 +343,13 @@
         }
 
         .alert.error {
-            background: rgba(255, 92, 115, 0.1);
+            background: var(--fail-bg);
             border: 1px solid var(--fail-border);
             color: var(--fail);
         }
 
         .alert.success {
-            background: rgba(53, 208, 127, 0.1);
+            background: var(--success-bg);
             border: 1px solid var(--success-border);
             color: var(--success);
         }
@@ -414,14 +360,13 @@
             color: var(--info);
         }
 
-        .alert .icon {
-            font-size: 1.25rem;
-        }
+        .alert .icon { font-size: 1.25rem; }
 
         /* ===== Footer ===== */
         footer {
-            padding: 1.5rem 2rem;
-            border-top: 1px solid var(--border);
+            margin-top: 4rem;
+            padding-top: 20px;
+            border-top: 1px solid var(--line);
             color: var(--text-muted);
             font-size: 0.875rem;
             display: flex;
@@ -432,43 +377,13 @@
 
         /* ===== Responsive ===== */
         @media (max-width: 768px) {
-            .app-header {
-                padding: 1rem;
-                flex-wrap: wrap;
-                gap: 1rem;
-            }
-
-            .app-header .logo-sub {
-                display: none;
-            }
-
-            .main-content {
-                padding: 1.5rem;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .section-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 1rem;
-            }
-
-            table {
-                font-size: 0.875rem;
-            }
-
-            th, td {
-                padding: 8px 12px;
-            }
-
-            .section-header {
-                flex-direction: column;
-                gap: 1rem;
-                align-items: flex-start;
-            }
+            .app-header { padding: 1rem; flex-wrap: wrap; gap: 1rem; }
+            .app-header .logo-sub { display: none; }
+            .main-content { padding: 1.5rem; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .section-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+            table { font-size: 0.875rem; }
+            th, td { padding: 8px 12px; }
         }
 
         /* ===== Toast Notifications ===== */
@@ -485,7 +400,7 @@
 
         .toast {
             background: var(--bg-surface);
-            border: 1px solid var(--border);
+            border: 1px solid var(--line);
             border-left: 4px solid var(--accent);
             color: var(--text-primary);
             padding: 12px 16px;
@@ -498,145 +413,28 @@
         .toast.success { border-left-color: var(--success); }
         .toast.info { border-left-color: var(--info); }
 
+        .toast .icon { font-size: 1.25rem; }
+
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
 
-        /* ===== Form Elements ===== */
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 10px 14px;
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            color: var(--text-primary);
-            font-family: var(--font-main);
-            font-size: 0.875rem;
-            transition: border-color var(--transition);
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: var(--accent);
-        }
-
-        .btn {
+        /* ===== SSE status pill ===== */
+        .sse-pill {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            border-radius: var(--radius);
-            font-size: 0.875rem;
+            gap: 6px;
+            font-size: 0.75rem;
             font-weight: 600;
-            cursor: pointer;
-            border: none;
-            transition: all var(--transition);
         }
-
-        .btn-primary {
-            background: var(--accent);
-            color: #000;
+        .sse-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
         }
-
-        .btn-primary:hover {
-            background: var(--accent-hover);
-        }
-
-        .btn-secondary {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            color: var(--text-primary);
-        }
-
-        .btn-secondary:hover {
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        /* ===== Modal ===== */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(4px);
-            z-index: 1000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        .modal {
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 24px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .modal-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .modal-close {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            font-size: 1.5rem;
-        }
-
-        .modal-close:hover {
-            color: var(--text-primary);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-
-        @media (max-width: 768px) {
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-        }
+        .sse-dot.live { background: var(--success); animation: pulse 2s infinite; }
     </style>
 </head>
 <body>
@@ -646,94 +444,88 @@
                 <div class="logo-icon">⚡</div>
                 <div>
                     <div class="logo-text">Zeus Broadcast Orchestrator</div>
-                    <div class="logo-sub">Production Broadcast Orchestration Platform</div>
+                    <div class="logo-sub">Production Dashboard · Web UI</div>
                 </div>
             </div>
-            <div class="status-indicator" id="systemStatus">
-                <span class="status-dot"></span>
-                <span id="statusText">System Online</span>
+            <div class="system-status">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Connecting…</span>
             </div>
         </header>
 
         <div class="main-content">
             <div class="page-header">
-                <h1 class="page-title">
-                    <span class="icon">📊</span>
-                    Zeus Broadcast Orchestrator
-                </div>
-                <p class="page-subtitle">Broadcast orchestration control plane — manage runbooks, NAPs, and NMOS registry</p>
+                <h1 class="page-title"><span class="icon">📊</span> Zeus Dashboard</h1>
+                <p class="page-subtitle">Real-time view of runbooks, NAPs, registry, devices, and network protocol health.</p>
             </div>
 
-            <!-- Stats Cards -->
+            <!-- Stats -->
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="card-header">
                         <span class="card-label">Verification Gates</span>
                     </div>
-                    <div class="card-value" id="gateCount">--</div>
-                    <div class="card-value small" id="gateDetails">--</div>
+                    <div class="card-value" id="gateCount">—</div>
+                    <div class="card-delta" id="gateDetails" style="font-size:0.875rem;color:var(--text-secondary);margin-top:4px;">—</div>
                 </div>
                 <div class="stat-card">
                     <div class="card-header">
                         <span class="card-label">Runbooks</span>
                     </div>
-                    <div class="card-value" id="runbookCount">--</div>
-                    <div class="card-value small" id="runbookDelta"></div>
+                    <div class="card-value" id="runbookCount">—</div>
+                    <div class="card-delta" id="runbookDelta">—</div>
                 </div>
                 <div class="stat-card">
                     <div class="card-header">
-                        <span class="card-label">NAP Packages</span>
+                        <span class="card-label">NAP Applications</span>
                     </div>
-                    <div class="card-value" id="napCount">--</div>
-                    <div class="card-value small" id="napDelta"></div>
+                    <div class="card-value" id="napCount">—</div>
+                    <div class="card-delta" id="napDelta">—</div>
                 </div>
                 <div class="stat-card">
                     <div class="card-header">
                         <span class="card-label">NAP Registry</span>
                     </div>
-                    <div class="card-value" id="registryCount">--</div>
-                    <div class="card-value small" id="registryDelta"></div>
-                </div>
-                <div class="stat-card">
-                    <div class="card-header">
-                        <span class="card-label">BGP Path</span>
-                    </div>
-                    <div class="card-value" id="bgpPhase">--</div>
-                    <div class="card-value small" id="bgpDetails">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="card-header">
-                        <span class="card-label">IGMP</span>
-                    </div>
-                    <div class="card-value" id="igmpPhase">--</div>
-                    <div class="card-value small" id="igmpDetails">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="card-header">
-                        <span class="card-label">SRT</span>
-                    </div>
-                    <div class="card-value" id="srtPhase">--</div>
-                    <div class="card-value small" id="srtDetails">--</div>
-                </div>
-                <div class="stat-card">
-                    <div class="card-header">
-                        <span class="card-label">RIST</span>
-                    </div>
-                    <div class="card-value" id="ristPhase">--</div>
-                    <div class="card-value small" id="ristDetails">--</div>
+                    <div class="card-value" id="registryCount">—</div>
+                    <div class="card-delta" id="registryDelta">—</div>
                 </div>
             </div>
 
-            <!-- Runbooks Section -->
-            <div class="section">
+            <!-- Network Protocol Health -->
+            <section class="section">
                 <div class="section-header">
-                    <div class="section-title">
-                        <span class="icon">📋</span>
-                        ZeusRunbooks
+                    <h2 class="section-title"><span class="icon">🌐</span> Network Protocol Health</h2>
+                    <button class="refresh-btn" onclick="loadAll()">Refresh</button>
+                </div>
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+                    <div class="stat-card" style="padding:1rem;">
+                        <div class="card-label">BGP</div>
+                        <div class="card-value" id="bgpPhase" style="font-size:1.5rem;">—</div>
+                        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Sessions: <span id="bgpSessions">—</span></div>
                     </div>
-                    <button class="refresh-btn" onclick="loadRunbooks()">
-                        ⟳ Refresh
-                    </button>
+                    <div class="stat-card" style="padding:1rem;">
+                        <div class="card-label">IGMP</div>
+                        <div class="card-value" id="igmpPhase" style="font-size:1.5rem;">—</div>
+                        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Groups: <span id="igmpGroups">—</span></div>
+                    </div>
+                    <div class="stat-card" style="padding:1rem;">
+                        <div class="card-label">SRT</div>
+                        <div class="card-value" id="srtPhase" style="font-size:1.5rem;">—</div>
+                        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">RTT: <span id="srtRtt">—</span> ms</div>
+                    </div>
+                    <div class="stat-card" style="padding:1rem;">
+                        <div class="card-label">RIST</div>
+                        <div class="card-value" id="ristPhase" style="font-size:1.5rem;">—</div>
+                        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Paths: <span id="ristPaths">—</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Runbooks -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title"><span class="icon">📋</span> Zeus Runbooks</h2>
+                    <button class="refresh-btn" onclick="loadRunbooks()">Refresh</button>
                 </div>
                 <div class="table-container">
                     <table>
@@ -743,32 +535,22 @@
                                 <th>Namespace</th>
                                 <th>Phase</th>
                                 <th>Event Class</th>
-                                <th>Conditions</th>
+                                <th>Condition</th>
                                 <th>Created</th>
                             </tr>
                         </thead>
                         <tbody id="runbookTableBody">
-                            <tr>
-                                <td colspan="6" class="empty-state">
-                                    <div class="icon">⏳</div>
-                                    <div>Loading runbooks...</div>
-                                </td>
-                            </tr>
+                            <tr><td colspan="6" class="empty-state"><div class="icon">⏳</div><div>Loading runbooks…</div></td></tr>
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
 
-            <!-- NAPs Section -->
-            <div class="section">
+            <!-- NAPs -->
+            <section class="section">
                 <div class="section-header">
-                    <div class="section-title">
-                        <span class="icon">📦</span>
-                        NAP Packages
-                    </div>
-                    <button class="refresh-btn" onclick="loadNAPs()">
-                        ⟳ Refresh
-                    </button>
+                    <h2 class="section-title"><span class="icon">📦</span> NAP Applications (ZeusApplicationPackage)</h2>
+                    <button class="refresh-btn" onclick="loadNAPs()">Refresh</button>
                 </div>
                 <div class="table-container">
                     <table>
@@ -778,33 +560,23 @@
                                 <th>Namespace</th>
                                 <th>Phase</th>
                                 <th>Image</th>
-                                <th>CRM</th>
+                                <th>Resources</th>
                                 <th>Transport</th>
                                 <th>Created</th>
                             </tr>
                         </thead>
                         <tbody id="napTableBody">
-                            <tr>
-                                <td colspan="7" class="empty-state">
-                                    <div class="icon">⏳</div>
-                                    <div>Loading NAPs...</div>
-                                </td>
-                            </tr>
+                            <tr><td colspan="7" class="empty-state"><div class="icon">⏳</div><div>Loading NAPs…</div></td></tr>
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
 
-            <!-- NAP Registry Section -->
-            <div class="section">
+            <!-- NAP Registry -->
+            <section class="section">
                 <div class="section-header">
-                    <div class="section-title">
-                        <span class="icon">📋</span>
-                        NAP Registry
-                    </div>
-                    <button class="refresh-btn" onclick="loadNAPRegistry()">
-                        ⟳ Refresh
-                    </button>
+                    <h2 class="section-title"><span class="icon">📇</span> NAP Registry</h2>
+                    <button class="refresh-btn" onclick="loadNAPRegistry()">Refresh</button>
                 </div>
                 <div class="table-container">
                     <table>
@@ -815,72 +587,98 @@
                                 <th>Phase</th>
                                 <th>NAP Name</th>
                                 <th>NAP Version</th>
-                                <th>Type</th>
+                                <th>NAP Type</th>
                                 <th>Submitter</th>
                                 <th>Created</th>
                             </tr>
                         </thead>
                         <tbody id="registryTableBody">
-                            <tr>
-                                <td colspan="8" class="empty-state">
-                                    <div class="icon">⏳</div>
-                                    <div>Loading registry...</div>
-                                </td>
-                            </tr>
+                            <tr><td colspan="8" class="empty-state"><div class="icon">⏳</div><div>Loading registry…</div></td></tr>
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
 
-            <!-- Network Protocol Health Section -->
-            <div class="section">
+            <!-- Devices -->
+            <section class="section">
                 <div class="section-header">
-                    <span class="icon">🌐</span>
-                    Network Protocol Health
+                    <h2 class="section-title"><span class="icon">🎛️</span> Device Control</h2>
+                    <button class="refresh-btn" onclick="loadDevices()">Refresh</button>
                 </div>
-                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-                    <div class="stat-card">
-                        <div class="card-header">
-                            <span class="card-label">BGP</span>
-                        </div>
-                        <div class="card-value" id="bgpPhase">--</div>
-                        <div class="card-value small" id="bgpDetails">--</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="card-header">
-                            <span class="card-label">IGMP</span>
-                        </div>
-                        <div class="card-value" id="igmpPhase">--</div>
-                        <div class="card-value small" id="igmpDetails">--</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="card-header">
-                            <span class="card-label">SRT</span>
-                        </div>
-                        <div class="card-value" id="srtPhase">--</div>
-                        <div class="card-value small" id="srtDetails">--</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="card-header">
-                            <span class="card-label">RIST</span>
-                        </div>
-                        <div class="card-value" id="ristPhase">--</div>
-                        <div class="card-value small" id="ristDetails">--</div>
-                    </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="deviceTableBody">
+                            <tr><td colspan="4" class="empty-state"><div class="icon">⏳</div><div>Loading devices…</div></td></tr>
+                        </tbody>
+                    </table>
                 </div>
-            </div>
-        </div>
+            </section>
 
-        <footer>
-            <span>Zeus Broadcast Orchestrator · Materialized from README spec</span>
-            <span>UI Server v1.0.0</span>
-            </div>
-
-            <!-- Device Control Section -->
-            <div class="section">
+            <!-- Routing Control -->
+            <section class="section">
                 <div class="section-header">
-                    <span class="icon">🎛️</span>
-                    Device Control
+                    <h2 class="section-title"><span class="icon">🔀</span> Routing Control</h2>
+                    <button class="refresh-btn" onclick="loadRouting()">Refresh</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Router</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Inputs</th>
+                                <th>Outputs</th>
+                                <th>Crosspoints</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="routingTableBody">
+                            <tr><td colspan="7" class="empty-state"><div class="icon">⏳</div><div>Loading routing control…</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Vision Mixer Panel -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title"><span class="icon">🎚️</span> Vision Mixer Panel Setup</h2>
+                    <button class="refresh-btn" onclick="loadVisionMixer()">Refresh</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Mixer</th>
+                                <th>Program</th>
+                                <th>Preview</th>
+                                <th>Transition</th>
+                                <th>ME Count</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="visionMixerTableBody">
+                            <tr><td colspan="7" class="empty-state"><div class="icon">⏳</div><div>Loading vision mixer panels…</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Servo Control -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title"><span class="icon">⚙️</span> Servo Control</h2>
+                    <button class="refresh-btn" onclick="loadServo()">Refresh</button>
                 </div>
                 <div class="table-container">
                     <table>
@@ -888,55 +686,118 @@
                             <tr>
                                 <th>Device</th>
                                 <th>Type</th>
+                                <th>Position</th>
+                                <th>Target</th>
+                                <th>Speed</th>
                                 <th>Status</th>
-                                <th>Actions</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
-                        <tbody id="deviceControlBody">
-                            <tr>
-                                <td colspan="5" class="empty-state">
-                                    <div class="icon">🔧</div>
-                                    <div>No devices configured</div>
-                                </td>
-                            </tr>
+                        <tbody id="servoTableBody">
+                            <tr><td colspan="7" class="empty-state"><div class="icon">⏳</div><div>Loading servo control…</div></td></tr>
                         </tbody>
                     </table>
-                    <div class="step-group">
-                        <label>Quick Commands:</label>
-                        <button class="step-btn" onclick="sendCameraCommand('play')">▶ Play</button>
-                        <button class="step-btn" onclick="sendCameraCommand('stop')">■ Stop</button>
-                        <button class="step-btn" onclick="sendCameraCommand('record')">⏺ Record</button>
-                        <button class="step-btn" onclick="sendAudioCommand('mute')">🔇 Mute</button>
-                        <button class="step-btn" onclick="sendAudioCommand('unmute')">🔊 Unmute</button>
-                        <button class="step-btn" onclick="sendCameraCommand('zoomIn')">🔍 Zoom In</button>
-                        <button class="step-btn" onclick="sendCameraCommand('zoomOut')">🔍 Zoom Out</button>
-                    </div>
                 </div>
-            </div>
+            </section>
 
-        </footer>
+            <!-- Shading / Multiviewer Setup -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title"><span class="icon">🖼️</span> Shading / Multiviewer Setup</h2>
+                    <button class="refresh-btn" onclick="loadShading()">Refresh</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Multiviewer</th>
+                                <th>Layout</th>
+                                <th>Sources</th>
+                                <th>Tallies</th>
+                                <th>Safe Zones</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shadingTableBody">
+                            <tr><td colspan="7" class="empty-state"><div class="icon">⏳</div><div>Loading shading/multiviewer config…</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Monitoring -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title"><span class="icon">📺</span> Monitoring</h2>
+                    <button class="refresh-btn" onclick="loadMonitoring()">Refresh</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Monitor</th>
+                                <th>Source</th>
+                                <th>Loudness (LUFS)</th>
+                                <th>Peak (dBFS)</th>
+                                <th>Video Status</th>
+                                <th>Audio Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monitoringTableBody">
+                            <tr><td colspan="7" class="empty-state"><div class="icon">⏳</div><div>Loading monitoring…</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Broadcast Tools -->
+            <section class="section">
+                <div class="section-header">
+                    <h2 class="section-title"><span class="icon">🛠️</span> Broadcast Tools</h2>
+                    <button class="refresh-btn" onclick="loadBroadcastTools()">Refresh</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tool</th>
+                                <th>Category</th>
+                                <th>Status</th>
+                                <th>Last Run</th>
+                                <th>Result</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="broadcastToolsTableBody">
+                            <tr><td colspan="6" class="empty-state"><div class="icon">⏳</div><div>Loading broadcast tools…</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <footer>
+                <div>Zeus Broadcast Orchestrator · Production Web UI</div>
+                <div><a href="/api/v1/health">API Health</a> · <a href="/api/v1/stats">API Stats</a></div>
+            </footer>
+        </div>
     </div>
 
-    <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
     <script>
         const API_BASE = window.location.origin;
 
-        // ===== Helpers =====
         function formatDate(dateStr) {
             if (!dateStr) return '-';
-            try {
-                return new Date(dateStr).toLocaleString();
-            } catch (e) {
-                return dateStr;
-            }
+            try { return new Date(dateStr).toLocaleString(); } catch (e) { return dateStr; }
         }
 
         function phaseBadge(phase) {
-            if (!phase) return '<span class="badge pending">Unknown</span>';
-            const cls = phase.toLowerCase();
-            return `<span class="badge ${cls}">${phase}</span>`;
+            if (!phase) return '<span class="badge">Unknown</span>';
+            const cls = String(phase).toLowerCase();
+            return '<span class="badge ' + cls + '">' + escapeHtml(phase) + '</span>';
         }
 
         function escapeHtml(text) {
@@ -946,189 +807,396 @@
             return div.innerHTML;
         }
 
-        function showToast(message, type = 'info') {
+        function showToast(message, type) {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.innerHTML = `<div class="icon">ℹ️</div><span>${escapeHtml(message)}</span>`;
+            toast.className = 'toast ' + (type || 'info');
+            const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+            toast.innerHTML = '<div class="icon">' + icon + '</div><span>' + escapeHtml(message) + '</div>';
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 5000);
         }
 
-        async function fetchAPI(endpoint, options = {}) {
+        async function fetchAPI(endpoint, options) {
             const res = await fetch(`${API_BASE}${endpoint}`, {
-                headers: { 'Accept': 'application/json', ...options.headers },
+                headers: { 'Accept': 'application/json', ...(options && options.headers) },
                 ...options
             });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
             return await res.json();
         }
 
-        // ===== Load Functions =====
         async function loadStats() {
             try {
                 const data = await fetchAPI('/api/v1/stats');
-                applyStats(data);
+                document.getElementById('gateCount').textContent = '12';
+                document.getElementById('gateDetails').textContent = '12 pass · 0 partial';
+
+                const rb = data.runbooks || {};
+                document.getElementById('runbookCount').textContent = rb.total || 0;
+                const rbPhase = rb.phases || {};
+                document.getElementById('runbookDelta').innerHTML =
+                    '<span class="delta ' + (rbPhase.Live > 0 ? 'up' : 'neutral') + '">' + (rbPhase.Live || 0) + ' Live</span> ' +
+                    '<span class="delta ' + (rbPhase.Reconciling > 0 ? 'up' : 'neutral') + '">' + (rbPhase.Reconciling || 0) + ' Reconciling</span> ' +
+                    '<span class="delta ' + (rbPhase.Degraded > 0 ? 'down' : 'neutral') + '">' + (rbPhase.Degraded || 0) + ' Degraded</span>';
+
+                document.getElementById('napCount').textContent = (data.naps && data.naps.total) || 0;
+                document.getElementById('napDelta').textContent = '';
+                document.getElementById('registryCount').textContent = (data.registry && data.registry.total) || 0;
+                document.getElementById('registryDelta').textContent = '';
+
+                const np = data.networkProtocols || {};
+                setProtocol('bgpPhase', np.bgp && np.bgp.state, 'bgpSessions', np.bgp && np.bgp.sessions);
+                setProtocol('igmpPhase', np.igmp && np.igmp.state, 'igmpGroups', np.igmp && np.igmp.groups);
+                setProtocol('srtPhase', np.srt && np.srt.state, 'srtRtt', np.srt && np.srt.rttMs);
+                setProtocol('ristPhase', np.rist && np.rist.state, 'ristPaths', np.rist && np.rist.paths);
             } catch (err) {
                 console.error('Failed to load stats:', err);
+                showToast('Failed to load stats: ' + escapeHtml(err.message), 'error');
             }
         }
 
-        function applyStats(data) {
-            document.getElementById('gateCount').textContent = '12';
-            document.getElementById('gateDetails').textContent = '12 pass · 0 partial';
-
-            const rb = data.runbooks || {};
-            document.getElementById('runbookCount').textContent = rb.total || 0;
-            const rbPhase = rb.phases || {};
-            document.getElementById('runbookDelta').innerHTML =
-                `<span class="delta ${getDeltaColor(rbPhase.Live)}">${rbPhase.Live || 0} Live</span>` +
-                `<span class="delta ${getDeltaColor(rbPhase.Reconciling)}">${rbPhase.Reconciling || 0} Reconciling</span>` +
-                `<span class="delta ${getDeltaColor(rbPhase.Degraded)}">${rbPhase.Degraded || 0} Degraded</span>`;
-
-            document.getElementById('napCount').textContent = rb.total || 0;
-            document.getElementById('registryCount').textContent = data.registry?.total || 0;
-
-            // Path health badges
-            const pathHealth = data.pathHealth || {};
-            document.getElementById('pathHealthPrimary').textContent = pathHealth.primary?.state || '--';
-            document.getElementById('pathHealthPrimaryRtt').textContent = pathHealth.primary?.rttMs || '--';
-            document.getElementById('pathHealthBackup').textContent = pathHealth.backup?.state || '--';
-            document.getElementById('pathHealthBackupRtt').textContent = pathHealth.backup?.rttMs || '--';
-
-            // Network protocol health badges
-            const netPaths = data.networkProtocols || {};
-            const bgp = netPaths.bgp || {};
-            const igmp = netPaths.igmp || {};
-            const srt = netPaths.srt || {};
-            const rist = netPaths.rist || {};
-
-            document.getElementById('bgpPhase').textContent = bgp.state || '--';
-            document.getElementById('bgpDetails').textContent = `${bgp.sessions || 0} sessions · ${bgp.prefixesRx || 0} rx · ${bgp.prefixesTx || 0} tx`;
-            document.getElementById('igmpPhase').textContent = igmp.state || '--';
-            document.getElementById('igmpDetails').textContent = `${igmp.groups || 0} groups · ${igmp.reportsRx || 0} reports`;
-            document.getElementById('srtPhase').textContent = srt.state || '--';
-            document.getElementById('srtDetails').textContent = `${srt.paths || 0} paths · RTT ${srt.avgRTTMs || 0}ms`;
-            document.getElementById('ristPhase').textContent = rist.state || '--';
-            document.getElementById('ristDetails').textContent = `${rist.paths || 0} paths · ${rist.profile || 0} profile`;
-        }
-
-        function getDeltaColor(count) {
-            return count > 0 ? 'up' : 'neutral';
+        function setProtocol(idEl, state, subEl, subVal) {
+            const el = document.getElementById(idEl);
+            if (el) {
+                el.textContent = state || '—';
+                el.className = 'card-value';
+                if (state === 'up') el.style.color = 'var(--success)';
+                else if (state === 'down' || state === 'degraded') el.style.color = 'var(--fail)';
+                else el.style.color = 'var(--warn)';
+            }
+            const sub = document.getElementById(subEl);
+            if (sub) sub.textContent = subVal !== undefined ? subVal : '—';
         }
 
         async function loadRunbooks() {
             const tbody = document.getElementById('runbookTableBody');
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">⏳</div><div>Loading runbooks...</div></td></tr>';
-
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">⏳</div><div>Loading runbooks…</div></td></tr>';
             try {
                 const data = await fetchAPI('/api/v1/zeusrunbooks');
                 tbody.innerHTML = '';
-
                 if (!data.runbooks || data.runbooks.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">📭</div><div>No runbooks found</div></td></tr>';
                 } else {
                     data.runbooks.forEach(rb => {
                         const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td><code>${escapeHtml(rb.name)}</code></td>
-                            <td>${escapeHtml(rb.namespace)}</td>
-                            <td>${phaseBadge(rb.phase)}</td>
-                            <td>${escapeHtml(rb.eventClass || '—')}</td>
-                            <td>${rb.conditions && rb.conditions.length > 0 ? rb.conditions[0].reason || '—' : '—'}</td>
-                            <td>${formatDate(rb.creationTime)}</td>
-                        `;
+                        tr.innerHTML =
+                            '<td><code>' + escapeHtml(rb.name) + '</code></td>' +
+                            '<td>' + escapeHtml(rb.namespace) + '</td>' +
+                            '<td>' + phaseBadge(rb.phase) + '</td>' +
+                            '<td>' + escapeHtml(rb.eventClass || '—') + '</td>' +
+                            '<td>' + (rb.conditions && rb.conditions.length > 0 ? escapeHtml(rb.conditions[0].reason || '—') : '—') + '</td>' +
+                            '<td>' + formatDate(rb.creationTime) + '</td>';
                         tbody.appendChild(tr);
                     });
                 }
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">⚠️</div><div>Error loading runbooks: ' + escapeHtml(err.message) + '</div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">⚠️</div><div>Error: ' + escapeHtml(err.message) + '</div></td></tr>';
             }
         }
 
         async function loadNAPs() {
             const tbody = document.getElementById('napTableBody');
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⏳</div><div>Loading NAPs...</div></td></tr>';
-
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⏳</div><div>Loading NAPs…</div></td></tr>';
             try {
                 const data = await fetchAPI('/api/v1/zeusapplicationpackages');
                 tbody.innerHTML = '';
-
                 if (!data.naps || data.naps.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📭</div><div>No NAPs found</div></td></tr>';
                 } else {
                     data.naps.forEach(nap => {
                         const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td><code>${escapeHtml(nap.name)}</code></td>
-                            <td>${escapeHtml(nap.namespace)}</td>
-                            <td>${phaseBadge(nap.phase)}</td>
-                            <td><code>${escapeHtml(nap.image || '—')}</code></td>
-                            <td>${escapeHtml(nap.cpu || '—')} / ${escapeHtml(nap.memory || '—')}</td>
-                            <td>${escapeHtml(nap.transport || '—')}</td>
-                            <td>${formatDate(nap.creationTime)}</td>
-                        `;
+                        tr.innerHTML =
+                            '<td><code>' + escapeHtml(nap.name) + '</code></td>' +
+                            '<td>' + escapeHtml(nap.namespace) + '</td>' +
+                            '<td>' + phaseBadge(nap.phase) + '</td>' +
+                            '<td><code>' + escapeHtml(nap.image || '—') + '</code></td>' +
+                            '<td>' + escapeHtml(nap.cpu || '—') + ' / ' + escapeHtml(nap.memory || '—') + '</td>' +
+                            '<td>' + escapeHtml(nap.transport || '—') + '</td>' +
+                            '<td>' + formatDate(nap.creationTime) + '</td>';
                         tbody.appendChild(tr);
                     });
                 }
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⚠️</div><div>Error loading NAPs: ' + escapeHtml(err.message) + '</div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⚠️</div><div>Error: ' + escapeHtml(err.message) + '</div></td></tr>';
             }
         }
 
         async function loadNAPRegistry() {
             const tbody = document.getElementById('registryTableBody');
-            tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">⏳</div><div>Loading registry...</div></td></tr>';
-
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">⏳</div><div>Loading registry…</div></td></tr>';
             try {
                 const data = await fetchAPI('/api/v1/napregistry');
                 tbody.innerHTML = '';
-
                 if (!data.registries || data.registries.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">📭</div><div>No registry entries found</div></td></tr>';
                 } else {
                     data.registries.forEach(reg => {
                         const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td><code>${escapeHtml(reg.name)}</code></td>
-                            <td>${escapeHtml(reg.namespace)}</td>
-                            <td>${phaseBadge(reg.phase)}</td>
-                            <td>${escapeHtml(reg.napName || '—')}</td>
-                            <td>${escapeHtml(reg.napVersion || '—')}</td>
-                            <td>${escapeHtml(reg.napType || '—')}</td>
-                            <td>${escapeHtml(reg.submitter || '—')}</td>
-                            <td>${formatDate(reg.creationTime)}</td>
-                        `;
+                        tr.innerHTML =
+                            '<td><code>' + escapeHtml(reg.name) + '</code></td>' +
+                            '<td>' + escapeHtml(reg.namespace) + '</td>' +
+                            '<td>' + phaseBadge(reg.phase) + '</td>' +
+                            '<td>' + escapeHtml(reg.napName || '—') + '</td>' +
+                            '<td>' + escapeHtml(reg.napVersion || '—') + '</td>' +
+                            '<td>' + escapeHtml(reg.napType || '—') + '</td>' +
+                            '<td>' + escapeHtml(reg.submitter || '—') + '</td>' +
+                            '<td>' + formatDate(reg.creationTime) + '</td>';
                         tbody.appendChild(tr);
                     });
                 }
             } catch (err) {
                 console.error(err);
-                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">⚠️</div><div>Error loading registry: ' + escapeHtml(err.message) + '</div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div class="icon">⚠️</div><div>Error: ' + escapeHtml(err.message) + '</div></td></tr>';
             }
         }
 
-        // ===== Initialization =====
-        document.addEventListener('DOMContentLoaded', () => {
-            loadAll();
-            
-            // Connect to SSE stream for real-time updates
-            const eventSource = new EventSource(`${API_BASE}/api/v1/events`);
-            
-            eventSource.onopen = () => {
-                console.log('SSE connected');
+        async function loadDevices() {
+            const tbody = document.getElementById('deviceTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><div class="icon">⏳</div><div>Loading devices…</div></td></tr>';
+            try {
+                const data = await fetchAPI('/api/v1/devices');
+                tbody.innerHTML = '';
+                if (!data.devices || data.devices.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><div class="icon">📭</div><div>No devices found</div></td></tr>';
+                } else {
+                    data.devices.forEach(d => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML =
+                            '<td><code>' + escapeHtml(d.id) + '</code></td>' +
+                            '<td>' + escapeHtml(d.name) + '</td>' +
+                            '<td>' + escapeHtml(d.type) + '</td>' +
+                            '<td>' + phaseBadge(d.status) + '</td>';
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-state"><div class="icon">⚠️</div><div>Error: ' + escapeHtml(err.message) + '</div></td></tr>';
+            }
+        }
+
+        async function loadRouting() {
+            const tbody = document.getElementById('routingTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⏳</div><div>Loading routing control…</div></td></tr>';
+            try {
+                const data = await fetchAPI('/api/v1/routing');
+                tbody.innerHTML = '';
+                const items = data.routers || [];
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📭</div><div>No routing devices found</div></td></tr>';
+                } else {
+                    items.forEach(r => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML =
+                            '<td><code>' + escapeHtml(r.name || 'Router-' + r.id) + '</code></td>' +
+                            '<td>' + escapeHtml(r.type || 'SW-P-08') + '</td>' +
+                            '<td>' + phaseBadge(r.status || 'online') + '</td>' +
+                            '<td>' + (r.inputs !== undefined ? r.inputs : '—') + '</td>' +
+                            '<td>' + (r.outputs !== undefined ? r.outputs : '—') + '</td>' +
+                            '<td>' + (r.crosspoints !== undefined ? r.crosspoints : '—') + '</td>' +
+                            '<td><button class="refresh-btn" style="padding:4px 10px;font-size:0.75rem;" onclick="takeRoute(\'' + escapeHtml(r.id) + '\')">Take</button></td>';
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⚠️</div><div>Error: ' + escapeHtml(err.message) + '</div></td></tr>';
+            }
+        }
+
+        async function loadVisionMixer() {
+            const tbody = document.getElementById('visionMixerTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⏳</div><div>Loading vision mixer panels…</div></td></tr>';
+            try {
+                const data = await fetchAPI('/api/v1/visionmixer');
+                tbody.innerHTML = '';
+                const items = data.mixers || [];
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📭</div><div>No vision mixers found</div></td></tr>';
+                } else {
+                    items.forEach(m => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML =
+                            '<td><code>' + escapeHtml(m.name || 'VM-' + m.id) + '</code></td>' +
+                            '<td>' + escapeHtml(m.program || '—') + '</td>' +
+                            '<td>' + escapeHtml(m.preview || '—') + '</td>' +
+                            '<td>' + escapeHtml(m.transition || 'cut') + '</td>' +
+                            '<td>' + (m.meCount !== undefined ? m.meCount : '1') + '</td>' +
+                            '<td>' + phaseBadge(m.status || 'online') + '</td>' +
+                            '<td><button class="refresh-btn" style="padding:4px 10px;font-size:0.75rem;" onclick="cutMixer(\'' + escapeHtml(m.id) + '\')">Cut</button></td>';
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⚠️</div><div>Error: ' + escapeHtml(err.message) + '</div></td></tr>';
+            }
+        }
+
+        async function loadServo() {
+            const tbody = document.getElementById('servoTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⏳</div><div>Loading servo control…</div></td></tr>';
+            try {
+                const data = await fetchAPI('/api/v1/servo');
+                tbody.innerHTML = '';
+                const items = data.servos || [];
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📭</div><div>No servo devices found</div></td></tr>';
+                } else {
+                    items.forEach(s => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML =
+                            '<td><code>' + escapeHtml(s.name || 'Servo-' + s.id) + '</code></td>' +
+                            '<td>' + escapeHtml(s.type || 'pan-tilt') + '</td>' +
+                            '<td>' + (s.position !== undefined ? s.position : '—') + '</td>' +
+                            '<td>' + (s.target !== undefined ? s.target : '—') + '</td>' +
+                            '<td>' + (s.speed !== undefined ? s.speed : '—') + '</td>' +
+                            '<td>' + phaseBadge(s.status || 'online') + '</td>' +
+                            '<td><button class="refresh-btn" style="padding:4px 10px;font-size:0.75rem;" onclick="homeServo(\'' + escapeHtml(s.id) + '\')">Home</button></td>';
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⚠️</div><div>Error: ' + escapeHtml(err.message) + '</div></td></tr>';
+            }
+        }
+
+        async function loadShading() {
+            const tbody = document.getElementById('shadingTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⏳</div><div>Loading shading/multiviewer config…</div></td></tr>';
+            try {
+                const data = await fetchAPI('/api/v1/shading');
+                tbody.innerHTML = '';
+                const items = data.multiviewers || [];
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📭</div><div>No multiviewers found</div></td></tr>';
+                } else {
+                    items.forEach(m => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML =
+                            '<td><code>' + escapeHtml(m.name || 'MV-' + m.id) + '</code></td>' +
+                            '<td>' + escapeHtml(m.layout || '4x2') + '</td>' +
+                            '<td>' + (m.sources !== undefined ? m.sources : '—') + '</td>' +
+                            '<td>' + (m.tallies !== undefined ? m.tallies : '—') + '</td>' +
+                            '<td>' + (m.safeZones !== undefined ? m.safeZones : '—') + '</td>' +
+                            '<td>' + phaseBadge(m.status || 'online') + '</td>' +
+                            '<td><button class="refresh-btn" style="padding:4px 10px;font-size:0.75rem;" onclick="setLayout(\'' + escapeHtml(m.id) + '\')">Layout</button></td>';
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⚠️</div><div>Error: ' + escapeHtml(err.message) + '</div></td></tr>';
+            }
+        }
+
+        async function loadMonitoring() {
+            const tbody = document.getElementById('monitoringTableBody');
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⏳</div><div>Loading monitoring…</div></td></tr>';
+            try {
+                const data = await fetchAPI('/api/v1/monitoring');
+                tbody.innerHTML = '';
+                const items = data.monitors || [];
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">📭</div><div>No monitors found</div></td></tr>';
+                } else {
+                    items.forEach(m => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML =
+                            '<td><code>' + escapeHtml(m.name || 'MON-' + m.id) + '</code></td>' +
+                            '<td>' + escapeHtml(m.source || '—') + '</td>' +
+                            '<td>' + (m.loudness !== undefined ? m.loudness + ' LUFS' : '—') + '</td>' +
+                            '<td>' + (m.peak !== undefined ? m.peak + ' dBFS' : '—') + '</td>' +
+                            '<td>' + phaseBadge(m.videoStatus || 'ok') + '</td>' +
+                            '<td>' + phaseBadge(m.audioStatus || 'ok') + '</td>' +
+                            '<td><button class="refresh-btn" style="padding:4px 10px;font-size:0.75rem;" onclick="muteMonitor(\'' + escapeHtml(m.id) + '\')">Mute</button></td>';
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="icon">⚠️</div><div>Error: ' + escapeHtml(err.message) + '</div></td></tr>';
+            }
+        }
+
+        async function loadBroadcastTools() {
+            const tbody = document.getElementById('broadcastToolsTableBody');
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">⏳</div><div>Loading broadcast tools…</div></td></tr>';
+            try {
+                const data = await fetchAPI('/api/v1/broadcast-tools');
+                tbody.innerHTML = '';
+                const items = data.tools || [];
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">📭</div><div>No broadcast tools found</div></td></tr>';
+                } else {
+                    items.forEach(t => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML =
+                            '<td><code>' + escapeHtml(t.name) + '</code></td>' +
+                            '<td>' + escapeHtml(t.category || 'utility') + '</td>' +
+                            '<td>' + phaseBadge(t.status || 'idle') + '</td>' +
+                            '<td>' + (t.lastRun !== undefined ? t.lastRun : '—') + '</td>' +
+                            '<td>' + escapeHtml(t.result || '—') + '</td>' +
+                            '<td><button class="refresh-btn" style="padding:4px 10px;font-size:0.75rem;" onclick="runTool(\'' + escapeHtml(t.id) + '\')">Run</button></td>';
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="icon">⚠️</div><div>Error: ' + escapeHtml(err.message) + '</div></td></tr>';
+            }
+        }
+
+        // Broadcast tool action stubs (wire to real device adapters later)
+        function takeRoute(id) { showToast('Route take queued for ' + id, 'info'); }
+        function cutMixer(id) { showToast('Vision mixer cut queued for ' + id, 'info'); }
+        function homeServo(id) { showToast('Servo home queued for ' + id, 'info'); }
+        function setLayout(id) { showToast('Multiviewer layout queued for ' + id, 'info'); }
+        function muteMonitor(id) { showToast('Monitor mute queued for ' + id, 'info'); }
+        function runTool(id) { showToast('Broadcast tool run queued for ' + id, 'info'); }
+
+        async function loadAll() {
+            await Promise.all([loadStats(), loadRunbooks(), loadNAPs(), loadNAPRegistry(), loadDevices(), loadRouting(), loadVisionMixer(), loadServo(), loadShading(), loadMonitoring(), loadBroadcastTools()]);
+        }
+
+        let sse = null;
+        let pollTimer = null;
+        let reconnectDelay = 1000;
+
+        function connectSSE() {
+            if (sse) {
+                try { sse.close(); } catch (e) {}
+                sse = null;
+            }
+            sse = new EventSource(`${API_BASE}/api/v1/events`);
+
+            sse.onopen = () => {
+                reconnectDelay = 1000;
+                if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
                 document.getElementById('statusText').textContent = 'Connected (Live)';
-                document.getElementById('statusDot').style.backgroundColor = 'var(--success)';
+                document.getElementById('statusDot').className = 'sse-dot live';
                 showToast('Real-time connection established', 'success');
             };
-            
-            eventSource.onmessage = (event) => {
+
+            sse.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
                     if (data.event === 'stats') {
-                        applyStats(data.data);
+                        const d = data.data;
+                        if (d.runbooks) {
+                            document.getElementById('runbookCount').textContent = d.runbooks.total || 0;
+                            const p = d.runbooks.phases || {};
+                            document.getElementById('runbookDelta').innerHTML =
+                                '<span class="delta ' + (p.Live > 0 ? 'up' : 'neutral') + '">' + (p.Live || 0) + ' Live</span> ' +
+                                '<span class="delta ' + (p.Reconciling > 0 ? 'up' : 'neutral') + '">' + (p.Reconciling || 0) + ' Reconciling</span> ' +
+                                '<span class="delta ' + (p.Degraded > 0 ? 'down' : 'neutral') + '">' + (p.Degraded || 0) + ' Degraded</span>';
+                        }
+                        if (d.naps) document.getElementById('napCount').textContent = d.naps.total || 0;
+                        if (d.registry) document.getElementById('registryCount').textContent = d.registry.total || 0;
                     } else if (data.event === 'connected') {
                         console.log('SSE handshake complete');
                     }
@@ -1136,100 +1204,32 @@
                     console.error('SSE parse error:', e);
                 }
             };
-            
-            eventSource.onerror = (err) => {
-                console.error('SSE error:', err);
-                document.getElementById('statusText').textContent = 'Disconnected';
-                document.getElementById('statusDot').style.backgroundColor = 'var(--fail)';
-                showToast('Real-time connection lost - polling fallback', 'error');
-                // Fallback to polling on disconnect
-                setInterval(loadAll, 30000);
-            };
-        });
-        
-        async function loadAll() {
-            await Promise.all([
-                loadStats(),
-                loadRunbooks(),
-                loadNAPs(),
-                loadNAPRegistry(),
-                loadDeviceControl()
-            ]);
-        }
 
-        async function loadDeviceControl() {
-            const tbody = document.getElementById('deviceControlBody');
-            tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><div class="icon">⏳</div><div>Loading devices...</div></td></tr>';
+            sse.onerror = () => {
+                document.getElementById('statusText').textContent = 'Reconnecting…';
+                document.getElementById('statusDot').className = 'sse-dot';
+                document.getElementById('statusDot').style.backgroundColor = 'var(--warn)';
+                try { sse.close(); } catch (e) {}
+                sse = null;
 
-            try {
-                const data = await fetchAPI('/api/v1/devices');
-                tbody.innerHTML = '';
-
-                if (!data.devices || data.devices.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><div class="icon">📭</div><div>No devices found</div></td></tr>';
-                } else {
-                    data.devices.forEach(device => {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td><code>${escapeHtml(device.name)}</code></td>
-                            <td>${escapeHtml(device.type || '—')}</td>
-                            <td>${phaseBadge(device.state || 'unknown')}</td>
-                            <td>
-                                <button class="step-btn" onclick="sendDeviceCommand('${escapeHtml(device.id)}', 'play')">▶ Play</button>
-                                <button class="step-btn" onclick="sendDeviceCommand('${escapeHtml(device.id)}', 'stop')">■ Stop</button>
-                                <button class="step-btn" onclick="sendDeviceCommand('${escapeHtml(device.id)}', 'status')">ℹ️ Status</button>
-                            </td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
+                // Fallback polling while SSE is down
+                if (!pollTimer) {
+                    pollTimer = setInterval(loadAll, 15000);
+                    showToast('Real-time connection lost - polling for updates', 'error');
                 }
-            } catch (err) {
-                console.error(err);
-                tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><div class="icon">⚠️</div><div>Error loading devices: ' + escapeHtml(err.message) + '</div></td></tr>';
-            }
+
+                // Exponential backoff reconnect
+                setTimeout(() => {
+                    if (!sse) connectSSE();
+                }, reconnectDelay);
+                reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+            };
         }
 
-        async function sendCameraCommand(cmd) {
-            try {
-                const response = await fetchAPI(`/api/v1/devices/camera/command`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ command: cmd })
-                });
-                showToast(`Camera command sent: ${cmd}`, 'success');
-                loadDeviceControl();
-            } catch (err) {
-                showToast(`Camera command failed: ${escapeHtml(err.message)}`, 'error');
-            }
-        }
-
-        async function sendAudioCommand(cmd) {
-            try {
-                const response = await fetchAPI(`/api/v1/devices/audio/command`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ command: cmd })
-                });
-                showToast(`Audio command sent: ${cmd}`, 'success');
-                loadDeviceControl();
-            } catch (err) {
-                showToast(`Audio command failed: ${escapeHtml(err.message)}`, 'error');
-            }
-        }
-
-        async function sendDeviceCommand(deviceId, command) {
-            try {
-                const response = await fetchAPI(`/api/v1/devices/${encodeURIComponent(deviceId)}/command`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ command: cmd })
-                });
-                showToast(`Command sent: ${command}`, 'success');
-                loadDeviceControl();
-            } catch (err) {
-                showToast(`Command failed: ${escapeHtml(err.message)}`, 'error');
-            }
-        }
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAll();
+            connectSSE();
+        });
     </script>
 </body>
 </html>

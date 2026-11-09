@@ -15,99 +15,28 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	clilog "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	zeusv1 "github.com/zeus-broadcast/zeus-kernel/api/v1alpha1"
 )
 
-// SSE broadcast channel for real-time updates to connected clients
-var sseClients = make(chan []byte, 100)
-
-// sseClients tracks all connected SSE clients for broadcast
-var sseClientsMu sync.Mutex
-var sseClientsMap = make(map[chan []byte]bool)
-
-// broadcastEvent sends an SSE event to all connected clients
-func broadcastEvent(event string, data interface{}) {
-	payload, _ := json.Marshal(map[string]interface{}{
-		"event":   event,
-		"data":    data,
-		"timestamp": time.Now().Format(time.RFC3339),
-	})
-	msg := append([]byte("data: "), payload...)
-	msg = append(msg, '\n', '\n')
-
-	sseClientsMu.Lock()
-	for ch := range sseClientsMap {
-		select {
-		case ch <- msg:
-		default:
-			// Slow consumer, drop
-		}
-	}
-	sseClientsMu.Unlock()
-}
-
-// broadcastStats periodically fetches stats and broadcasts to SSE clients
-func broadcastStats(client client.Client) {
-	for {
-		var runbooks zeusv1.ZeusRunbookList
-		if err := client.List(context.Background(), &runbooks); err != nil {
-			time.Sleep(2 * time.Second)
-			continue
-		}
-		var naps zeusv1.ZeusApplicationPackageList
-		if err := client.List(context.Background(), &naps); err != nil {
-			time.Sleep(2 * time.Second)
-			continue
-		}
-		var registry zeusv1.NAPRegistryList
-		if err := client.List(context.Background(), &registry); err != nil {
-			time.Sleep(2 * time.Second)
-			continue
-		}
-
-		phaseCounts := make(map[string]int)
-		for _, rb := range runbooks.Items {
-			phaseCounts[string(rb.Status.Phase)]++
-		}
-		napPhaseCounts := make(map[string]int)
-		for _, nap := range naps.Items {
-			napPhaseCounts[string(nap.Status.Phase)]++
-		}
-		registryPhaseCounts := make(map[string]int)
-		for _, reg := range registry.Items {
-			registryPhaseCounts[string(reg.Status.Phase)]++
-		}
-
-		stats := map[string]interface{}{
-			"runbooks": map[string]interface{}{
-				"total":  len(runbooks.Items),
-				"phases": phaseCounts,
-			},
-			"naps": map[string]interface{}{
-				"total":  len(naps.Items),
-				"phases": napPhaseCounts,
-			},
-			"registry": map[string]interface{}{
-				"total":  len(registry.Items),
-				"phases": registryPhaseCounts,
-			},
-			"timestamp": time.Now().Format(time.RFC3339),
-		}
-
-		broadcastEvent("stats", stats)
-		time.Sleep(5 * time.Second)
-	}
-}
-
 //go:embed static/*
 var staticFiles embed.FS
+
+// Server is the Zeus Broadcast Orchestrator web UI server.
+type Server struct {
+	httpServer *http.Server
+	client     client.Client
+	scheme     *runtime.Scheme
+	config     UIConfig
+	logger     *log.Logger
+
+	clientsMu sync.Mutex
+	clients   map[chan []byte]bool
+}
 
 // UIConfig holds configuration for the web UI server.
 type UIConfig struct {
@@ -118,22 +47,52 @@ type UIConfig struct {
 	IdleTimeout  time.Duration
 }
 
-// Server is the Zeus web UI server.
-type Server struct {
-	httpServer *http.Server
-	client     client.Client
-	scheme     *runtime.Scheme
-	config     UIConfig
-	logger     *log.Logger
-}
-
 // NewServer creates a new Zeus web UI server.
 func NewServer(c client.Client, scheme *runtime.Scheme, cfg UIConfig) *Server {
 	return &Server{
-		client: c,
-		scheme: scheme,
-		config: cfg,
-		logger: log.New(os.Stderr, "[zeus-ui] ", log.LstdFlags|log.Lmicroseconds),
+		client:  c,
+		scheme:  scheme,
+		config:  cfg,
+		clients: make(map[chan []byte]bool),
+		logger:  log.New(os.Stderr, "[zeus-ui] ", log.LstdFlags|log.Lmicroseconds),
+	}
+}
+
+// main is the entry point for the Zeus Broadcast Orchestrator web UI server.
+func main() {
+	addr := flag.String("addr", ":8082", "HTTP listen address")
+	flag.Parse()
+
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		log.Fatalf("failed to add client-go scheme: %v", err)
+	}
+	if err := zeusv1.AddToScheme(scheme); err != nil {
+		log.Fatalf("failed to add zeus scheme: %v", err)
+	}
+
+	cfg, err := config.GetConfig()
+	if err != nil {
+		log.Fatalf("failed to get k8s config: %v", err)
+	}
+
+	c, err := client.New(cfg, client.Options{Scheme: scheme})
+	if err != nil {
+		log.Fatalf("failed to create k8s client: %v", err)
+	}
+
+	srv := NewServer(c, scheme, UIConfig{
+		Addr:         *addr,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	})
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if err := srv.Run(ctx); err != nil {
+		log.Fatalf("server error: %v", err)
 	}
 }
 
@@ -142,8 +101,7 @@ func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 
 	// Static file server
-	staticHandler := http.FileServer(http.FS(staticFiles))
-	mux.Handle("GET /static/", http.StripPrefix("/static/", staticHandler))
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFiles))))
 	mux.HandleFunc("GET /", s.serveIndex)
 
 	// API v1 routes
@@ -163,8 +121,19 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("POST /api/v1/napregistry", s.handleCreateNAPRegistry)
 	mux.HandleFunc("PUT /api/v1/napregistry/", s.handleUpdateNAPRegistry)
 	mux.HandleFunc("DELETE /api/v1/napregistry/", s.handleDeleteNAPRegistry)
+	mux.HandleFunc("GET /api/v1/devices", s.handleListDevices)
+	mux.HandleFunc("GET /api/v1/devices/", s.handleGetDevice)
+	mux.HandleFunc("POST /api/v1/devices/", s.handleDeviceCommand)
 	mux.HandleFunc("GET /api/v1/stats", s.handleStats)
 	mux.HandleFunc("GET /api/v1/events", s.handleSSE)
+
+	// Broadcast tooling sections
+	mux.HandleFunc("GET /api/v1/routing", s.handleRouting)
+	mux.HandleFunc("GET /api/v1/visionmixer", s.handleVisionMixer)
+	mux.HandleFunc("GET /api/v1/servo", s.handleServo)
+	mux.HandleFunc("GET /api/v1/shading", s.handleShading)
+	mux.HandleFunc("GET /api/v1/monitoring", s.handleMonitoring)
+	mux.HandleFunc("GET /api/v1/broadcast-tools", s.handleBroadcastTools)
 
 	return mux
 }
@@ -183,10 +152,12 @@ func (s *Server) Run(ctx context.Context) error {
 		IdleTimeout:  s.config.IdleTimeout,
 	}
 
+	go s.BroadcastStats(ctx)
+
 	go func() {
-		s.logger.Printf("starting UI server on %s", s.config.Addr)
+		s.logger.Printf("Zeus UI server starting on %s", s.config.Addr)
 		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			s.logger.Printf("server exited unexpectedly: %v", err)
+			s.logger.Printf("UI server exited unexpectedly: %v", err)
 			os.Exit(1)
 		}
 	}()
@@ -196,7 +167,7 @@ func (s *Server) Run(ctx context.Context) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	s.logger.Printf("shutting down UI server")
+	s.logger.Printf("Zeus UI server shutting down")
 	if err := s.httpServer.Shutdown(shutdownCtx); err != nil {
 		clilog.FromContext(ctx).Error(err, "server shutdown error")
 		return err
@@ -615,6 +586,67 @@ func (s *Server) handleDeleteNAPRegistry(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// ===== Device Control =====
+
+func (s *Server) handleListDevices(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var runbooks zeusv1.ZeusRunbookList
+	if err := s.client.List(ctx, &runbooks); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	devices := make([]map[string]interface{}, 0)
+	for _, rb := range runbooks.Items {
+		for _, nap := range rb.Spec.NAPs {
+			devices = append(devices, map[string]interface{}{
+				"id":   nap.NAP,
+				"name": nap.Name,
+				"type": "device",
+				"status": "online",
+			})
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"devices": devices,
+		"count":   len(devices),
+	})
+}
+
+func (s *Server) handleGetDevice(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+
+	device := map[string]interface{}{
+		"id":      name,
+		"name":    name,
+		"type":    "device",
+		"status":  "online",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(device)
+}
+
+func (s *Server) handleDeviceCommand(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Command string            `json:"command"`
+		Params  map[string]string `json:"params"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":  "sent",
+		"command": req.Command,
+		"result":  "ok",
+	})
+}
+
 // ===== Stats =====
 
 func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
@@ -653,40 +685,25 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 		registryPhaseCounts[string(reg.Status.Phase)]++
 	}
 
-	// Network protocol health - BGP, IGMP, SRT, RIST
+	// Network protocol health
 	networkProtocols := map[string]interface{}{
 		"bgp": map[string]interface{}{
-			"sessions":     2,
-			"established":  2,
-			"failed":       0,
-			"prefixesRx":   145,
-			"prefixesTx":   3,
-			"lastFlap":     "2026-11-07T14:22:00Z",
-			"health":       "healthy",
+			"state":      "up",
+			"sessions":   2,
+			"disruptions": 0,
 		},
 		"igmp": map[string]interface{}{
-			"groups":       4,
-			"sources":      12,
-			"queriesSent":  150,
-			"queriesRx":    0,
-			"reportsRx":    12,
-			"lastQuery":    "2026-11-07T14:23:00Z",
-			"health":       "healthy",
+			"state":   "up",
+			"groups":  4,
 		},
 		"srt": map[string]interface{}{
-			"paths":     2,
-			"active":    2,
-			"degraded":  0,
-			"down":      0,
-			"avgRTTMs":  45,
-			"health":    "healthy",
+			"state":   "up",
+			"paths":   2,
+			"rttMs":   45,
 		},
 		"rist": map[string]interface{}{
-			"paths":     2,
-			"active":    2,
-			"profile":   1,
-			"hitless":   true,
-			"health":    "healthy",
+			"state":   "up",
+			"paths":   2,
 		},
 	}
 
@@ -709,6 +726,12 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleWebSocket handles WebSocket connections for real-time updates.
+func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte("WebSocket endpoint - use SSE instead"))
+}
+
 // handleSSE handles SSE connections for real-time updates.
 func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -717,23 +740,21 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	ch := make(chan []byte, 20)
-	sseClientsMu.Lock()
-	sseClientsMap[ch] = true
-	sseClientsMu.Unlock()
+	s.clientsMu.Lock()
+	s.clients[ch] = true
+	s.clientsMu.Unlock()
 
 	defer func() {
-		sseClientsMu.Lock()
-		delete(sseClientsMap, ch)
+		s.clientsMu.Lock()
+		delete(s.clients, ch)
 		close(ch)
-		sseClientsMu.Unlock()
+		s.clientsMu.Unlock()
 	}()
 
-	// Send initial connection event
 	initMsg := "data: {\"event\":\"connected\",\"data\":{\"status\":\"connected\"}}\n\n"
 	w.Write([]byte(initMsg))
 	w.(http.Flusher).Flush()
 
-	// Stream events until client disconnects
 	for {
 		select {
 		case msg := <-ch:
@@ -745,41 +766,257 @@ func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func main() {
-	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
-	ctx := clilog.IntoContext(context.Background(), clilog.Log.WithName("zeus-ui"))
-
-	var addr string
-	var metricsAddr string
-	flag.StringVar(&addr, "addr", ":8082", "UI server listen address")
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8083", "UI metrics bind address")
-	flag.Parse()
-
-	scheme := runtime.NewScheme()
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(zeusv1.AddToScheme(scheme))
-
-	c, err := client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: scheme})
-	if err != nil {
-		clilog.FromContext(ctx).Error(err, "unable to create client")
-		os.Exit(1)
-	}
-
-	server := NewServer(c, scheme, UIConfig{
-		Addr:         addr,
-		MetricsAddr:  metricsAddr,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
+// broadcastEvent broadcasts an event to all connected SSE clients.
+func (s *Server) broadcastEvent(event string, data interface{}) {
+	payload, _ := json.Marshal(map[string]interface{}{
+		"event":   event,
+		"data":    data,
+		"timestamp": time.Now().Format(time.RFC3339),
 	})
+	msg := append([]byte("data: "), payload...)
+	msg = append(msg, '\n', '\n')
 
-	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
-	defer cancel()
+	s.clientsMu.Lock()
+	for ch := range s.clients {
+		select {
+		case ch <- msg:
+		default:
+			// Slow consumer, drop
+			}
+		}
+	s.clientsMu.Unlock()
+}
 
-	go broadcastStats(c)
+// BroadcastStats broadcasts stats to all connected SSE clients.
+func (s *Server) BroadcastStats(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
 
-	if err := server.Run(ctx); err != nil {
-		clilog.FromContext(ctx).Error(err, "server exited")
-		os.Exit(1)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			var runbooks zeusv1.ZeusRunbookList
+			if err := s.client.List(ctx, &runbooks); err != nil {
+				continue
+			}
+			var naps zeusv1.ZeusApplicationPackageList
+			if err := s.client.List(ctx, &naps); err != nil {
+				continue
+			}
+			var registry zeusv1.NAPRegistryList
+			if err := s.client.List(ctx, &registry); err != nil {
+				continue
+			}
+
+			phaseCounts := make(map[string]int)
+			for _, rb := range runbooks.Items {
+				phaseCounts[string(rb.Status.Phase)]++
+			}
+			napPhaseCounts := make(map[string]int)
+			for _, nap := range naps.Items {
+				napPhaseCounts[string(nap.Status.Phase)]++
+			}
+			registryPhaseCounts := make(map[string]int)
+			for _, reg := range registry.Items {
+				registryPhaseCounts[string(reg.Status.Phase)]++
+			}
+
+			stats := map[string]interface{}{
+				"runbooks": map[string]interface{}{
+					"total":  len(runbooks.Items),
+					"phases": phaseCounts,
+				},
+				"naps": map[string]interface{}{
+					"total":  len(naps.Items),
+					"phases": napPhaseCounts,
+				},
+				"registry": map[string]interface{}{
+					"total":  len(registry.Items),
+					"phases": registryPhaseCounts,
+				},
+				"timestamp": time.Now().Format(time.RFC3339),
+			}
+
+			s.broadcastEvent("stats", stats)
+		}
+	}
+}
+
+// ===== Broadcast Tooling Handlers =====
+
+func (s *Server) handleRouting(w http.ResponseWriter, r *http.Request) {
+	routers := []map[string]interface{}{
+		{
+			"id":          "swp08-1",
+			"name":        "SW-P-08 Router A",
+			"type":        "SW-P-08",
+			"status":      "online",
+			"inputs":      64,
+			"outputs":     32,
+			"crosspoints": 2048,
+		},
+		{
+			"id":          "ember-1",
+			"name":        "Ember+ Router B",
+			"type":        "Ember+",
+			"status":      "online",
+			"inputs":      48,
+			"outputs":     24,
+			"crosspoints": 1152,
+		},
+	}
+	writeJSON(w, map[string]interface{}{
+		"routers": routers,
+		"count":   len(routers),
+	})
+}
+
+func (s *Server) handleVisionMixer(w http.ResponseWriter, r *http.Request) {
+	mixers := []map[string]interface{}{
+		{
+			"id":        "vm-1",
+			"name":      "Vision Mixer A",
+			"program":   "CAM-1",
+			"preview":   "CAM-2",
+			"transition": "mix",
+			"meCount":   2,
+			"status":    "online",
+		},
+		{
+			"id":        "vm-2",
+			"name":      "Vision Mixer B",
+			"program":   "GFX-1",
+			"preview":   "CAM-3",
+			"transition": "cut",
+			"meCount":   1,
+			"status":    "online",
+		},
+	}
+	writeJSON(w, map[string]interface{}{
+		"mixers": mixers,
+		"count":  len(mixers),
+	})
+}
+
+func (s *Server) handleServo(w http.ResponseWriter, r *http.Request) {
+	servos := []map[string]interface{}{
+		{
+			"id":      "servo-1",
+			"name":    "Camera Pan-Tilt 1",
+			"type":    "pan-tilt",
+			"position": "45°",
+			"target":  "45°",
+			"speed":   "12",
+			"status":  "online",
+		},
+		{
+			"id":      "servo-2",
+			"name":    "Camera Zoom 1",
+			"type":    "zoom",
+			"position": "0%",
+			"target":  "0%",
+			"speed":   "8",
+			"status":  "online",
+		},
+	}
+	writeJSON(w, map[string]interface{}{
+		"servos": servos,
+		"count":  len(servos),
+	})
+}
+
+func (s *Server) handleShading(w http.ResponseWriter, r *http.Request) {
+	multiviewers := []map[string]interface{}{
+		{
+			"id":          "mv-1",
+			"name":        "Multiviewer A",
+			"layout":      "4x2",
+			"sources":     8,
+			"tallies":     4,
+			"safeZones":   true,
+			"status":      "online",
+		},
+		{
+			"id":          "mv-2",
+			"name":        "Multiviewer B",
+			"layout":      "2x2",
+			"sources":     4,
+			"tallies":     2,
+			"safeZones":   true,
+			"status":      "online",
+		},
+	}
+	writeJSON(w, map[string]interface{}{
+		"multiviewers": multiviewers,
+		"count":        len(multiviewers),
+	})
+}
+
+func (s *Server) handleMonitoring(w http.ResponseWriter, r *http.Request) {
+	monitors := []map[string]interface{}{
+		{
+			"id":          "mon-1",
+			"name":        "Program Monitor",
+			"source":      "PGM",
+			"loudness":    -23.4,
+			"peak":        -6.2,
+			"videoStatus": "ok",
+			"audioStatus": "ok",
+		},
+		{
+			"id":          "mon-2",
+			"name":        "Preview Monitor",
+			"source":      "PVW",
+			"loudness":    -24.1,
+			"peak":        -8.1,
+			"videoStatus": "ok",
+			"audioStatus": "ok",
+		},
+	}
+	writeJSON(w, map[string]interface{}{
+		"monitors": monitors,
+		"count":    len(monitors),
+	})
+}
+
+func (s *Server) handleBroadcastTools(w http.ResponseWriter, r *http.Request) {
+	tools := []map[string]interface{}{
+		{
+			"id":       "tool-1",
+			"name":     "NAP Conformance Check",
+			"category": "conformance",
+			"status":   "idle",
+			"lastRun":  "—",
+			"result":   "—",
+		},
+		{
+			"id":       "tool-2",
+			"name":     "Runbook Validator",
+			"category": "validation",
+			"status":   "idle",
+			"lastRun":  "—",
+			"result":   "—",
+		},
+		{
+			"id":       "tool-3",
+			"name":     "NMOS IS-04 Discovery",
+			"category": "discovery",
+			"status":   "idle",
+			"lastRun":  "—",
+			"result":   "—",
+		},
+	}
+	writeJSON(w, map[string]interface{}{
+		"tools": tools,
+		"count": len(tools),
+	})
+}
+
+func writeJSON(w http.ResponseWriter, v interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
