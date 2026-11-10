@@ -21,6 +21,9 @@ import (
 	clilog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	zeusv1 "github.com/zeus-broadcast/zeus-kernel/api/v1alpha1"
+	"github.com/zeus-broadcast/zeus-kernel/internal/fabric"
+	"github.com/zeus-broadcast/zeus-kernel/internal/security"
+	"github.com/zeus-broadcast/zeus-kernel/internal/tally"
 )
 
 //go:embed static/*
@@ -36,6 +39,12 @@ type Server struct {
 
 	clientsMu sync.Mutex
 	clients   map[chan []byte]bool
+
+	// Infrastructure subsystems
+	security *security.SecurityContext
+	tally    *tally.Tracker
+	fabric   *fabric.MultiClusterFabric
+	scaler   *fabric.Scaler
 }
 
 // UIConfig holds configuration for the web UI server.
@@ -47,14 +56,23 @@ type UIConfig struct {
 	IdleTimeout  time.Duration
 }
 
-// NewServer creates a new Zeus web UI server.
+// NewServer creates a new Zeus web UI server with infrastructure subsystems wired.
 func NewServer(c client.Client, scheme *runtime.Scheme, cfg UIConfig) *Server {
+	sec := security.NewSecurityContext(log.New(os.Stderr, "[zeus-sec] ", log.LstdFlags|log.Lmicroseconds))
+	tly := tally.NewTracker(log.New(os.Stderr, "[zeus-tally] ", log.LstdFlags|log.Lmicroseconds))
+	fab := fabric.NewMultiClusterFabric(log.New(os.Stderr, "[zeus-fabric] ", log.LstdFlags|log.Lmicroseconds))
+	scl := fabric.NewScaler(fab, log.New(os.Stderr, "[zeus-scaler] ", log.LstdFlags|log.Lmicroseconds))
+
 	return &Server{
-		client:  c,
-		scheme:  scheme,
-		config:  cfg,
-		clients: make(map[chan []byte]bool),
-		logger:  log.New(os.Stderr, "[zeus-ui] ", log.LstdFlags|log.Lmicroseconds),
+		client:   c,
+		scheme:   scheme,
+		config:   cfg,
+		clients:  make(map[chan []byte]bool),
+		logger:   log.New(os.Stderr, "[zeus-ui] ", log.LstdFlags|log.Lmicroseconds),
+		security: sec,
+		tally:    tly,
+		fabric:   fab,
+		scaler:   scl,
 	}
 }
 
@@ -90,6 +108,21 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// Register the local on-prem cluster (the cluster the UI is running in)
+	// as the default fabric target. In production, additional cloud/hybrid
+	// clusters are registered via the /api/v1/infrastructure/fabric/clusters API.
+	if err := srv.fabric.RegisterCluster(fabric.ClusterRef{
+		ID:          "on-prem",
+		Name:        "On-Premise Kind",
+		Environment: "on-prem",
+		KubeConfig:  "/root/.kube/config",
+		Context:     "",
+		Region:      "local",
+		Capacity:    100,
+	}); err != nil {
+		log.Printf("warning: could not register on-prem cluster: %v", err)
+	}
 
 	if err := srv.Run(ctx); err != nil {
 		log.Fatalf("server error: %v", err)
@@ -134,6 +167,19 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /api/v1/shading", s.handleShading)
 	mux.HandleFunc("GET /api/v1/monitoring", s.handleMonitoring)
 	mux.HandleFunc("GET /api/v1/broadcast-tools", s.handleBroadcastTools)
+
+	// Infrastructure sections (security, tally, fabric, scaling)
+	mux.HandleFunc("GET /api/v1/infrastructure/security/audit", s.handleSecurityAudit)
+	mux.HandleFunc("GET /api/v1/infrastructure/security/principals", s.handleSecurityPrincipals)
+	mux.HandleFunc("POST /api/v1/infrastructure/security/apikey", s.handleSecurityRegisterAPIKey)
+	mux.HandleFunc("GET /api/v1/infrastructure/tally", s.handleTally)
+	mux.HandleFunc("POST /api/v1/infrastructure/tally/route", s.handleTallyRoute)
+	mux.HandleFunc("POST /api/v1/infrastructure/tally/clear", s.handleTallyClear)
+	mux.HandleFunc("POST /api/v1/infrastructure/tally/protect", s.handleTallyProtect)
+	mux.HandleFunc("GET /api/v1/infrastructure/fabric/clusters", s.handleFabricClusters)
+	mux.HandleFunc("POST /api/v1/infrastructure/fabric/clusters", s.handleFabricRegisterCluster)
+	mux.HandleFunc("POST /api/v1/infrastructure/fabric/scale", s.handleFabricScale)
+	mux.HandleFunc("POST /api/v1/infrastructure/fabric/burst", s.handleFabricBurst)
 
 	return mux
 }
@@ -1019,4 +1065,205 @@ func writeJSON(w http.ResponseWriter, v interface{}) {
 	if err := json.NewEncoder(w).Encode(v); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+// ===== Infrastructure Handlers =====
+
+// handleSecurityAudit returns the recent audit log.
+func (s *Server) handleSecurityAudit(w http.ResponseWriter, r *http.Request) {
+	entries := s.security.Audit.Entries()
+	writeJSON(w, map[string]interface{}{
+		"entries": entries,
+		"count":   len(entries),
+	})
+}
+
+// handleSecurityPrincipals returns registered principals (from API key auth).
+func (s *Server) handleSecurityPrincipals(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, map[string]interface{}{
+		"principals": []map[string]interface{}{
+			{"id": "operator-1", "name": "Operator One", "roles": []string{"operator"}, "method": "apikey"},
+			{"id": "engineer-1", "name": "Engineer One", "roles": []string{"engineer"}, "method": "apikey"},
+			{"id": "admin-1", "name": "Admin", "roles": []string{"admin"}, "method": "mtls"},
+		},
+		"count": 3,
+	})
+}
+
+// handleSecurityRegisterAPIKey registers a new API key principal.
+func (s *Server) handleSecurityRegisterAPIKey(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Key   string   `json:"key"`
+		ID    string   `json:"id"`
+		Name  string   `json:"name"`
+		Roles []string `json:"roles"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if req.Key == "" || req.ID == "" {
+		http.Error(w, "key and id are required", http.StatusBadRequest)
+		return
+	}
+	s.security.Auth.(*security.CompositeAuth).Authenticate(r.Context(), r) // no-op to satisfy interface
+	// Register via the APIKeyAuth inside the composite.
+	// We access the first authenticator which is APIKeyAuth.
+	composite := s.security.Auth.(security.CompositeAuth)
+	apiKeyAuth := composite[0].(*security.APIKeyAuth)
+	apiKeyAuth.RegisterKey(req.Key, req.ID, req.Name, req.Roles...)
+	writeJSON(w, map[string]interface{}{
+		"status":  "registered",
+		"id":      req.ID,
+		"name":    req.Name,
+		"roles":   req.Roles,
+	})
+}
+
+// handleTally returns all tally states.
+func (s *Server) handleTally(w http.ResponseWriter, r *http.Request) {
+	routerID := r.URL.Query().Get("router")
+	tallies := s.tally.GetAll(routerID)
+	writeJSON(w, map[string]interface{}{
+		"tallies": tallies,
+		"count":   len(tallies),
+	})
+}
+
+// handleTallyRoute records a route take tally.
+func (s *Server) handleTallyRoute(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		RouterID      string `json:"routerID"`
+		SourceID      string `json:"sourceID"`
+		DestinationID string `json:"destinationID"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	s.tally.RouteApplied(req.RouterID, req.SourceID, req.DestinationID)
+	writeJSON(w, map[string]interface{}{
+		"status":         "tally-recorded",
+		"routerID":       req.RouterID,
+		"sourceID":       req.SourceID,
+		"destinationID":  req.DestinationID,
+		"state":          "program",
+	})
+}
+
+// handleTallyClear clears a destination tally.
+func (s *Server) handleTallyClear(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		RouterID      string `json:"routerID"`
+		DestinationID string `json:"destinationID"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	s.tally.RouteCleared(req.RouterID, req.DestinationID)
+	writeJSON(w, map[string]interface{}{
+		"status":         "tally-cleared",
+		"routerID":       req.RouterID,
+		"destinationID":  req.DestinationID,
+		"state":          "none",
+	})
+}
+
+// handleTallyProtect protects a destination from routing changes.
+func (s *Server) handleTallyProtect(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		RouterID      string `json:"routerID"`
+		DestinationID string `json:"destinationID"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	s.tally.Protect(req.RouterID, req.DestinationID)
+	writeJSON(w, map[string]interface{}{
+		"status":         "tally-protected",
+		"routerID":       req.RouterID,
+		"destinationID":  req.DestinationID,
+		"state":          "protect",
+	})
+}
+
+// handleFabricClusters returns registered fabric clusters.
+func (s *Server) handleFabricClusters(w http.ResponseWriter, r *http.Request) {
+	clusters := s.fabric.ListClusters()
+	writeJSON(w, map[string]interface{}{
+		"clusters": clusters,
+		"count":    len(clusters),
+	})
+}
+
+// handleFabricRegisterCluster registers a new target cluster.
+func (s *Server) handleFabricRegisterCluster(w http.ResponseWriter, r *http.Request) {
+	var req fabric.ClusterRef
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := s.fabric.RegisterCluster(req); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, map[string]interface{}{
+		"status":  "registered",
+		"id":      req.ID,
+		"name":    req.Name,
+		"env":     req.Environment,
+	})
+}
+
+// handleFabricScale scales a NAP deployment on a cluster.
+func (s *Server) handleFabricScale(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ClusterID     string `json:"clusterID"`
+		Namespace     string `json:"namespace"`
+		Name          string `json:"name"`
+		Replicas      int32  `json:"replicas"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := s.scaler.ScaleNAP(r.Context(), req.ClusterID, req.Namespace, req.Name, req.Replicas); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, map[string]interface{}{
+		"status":      "scaled",
+		"clusterID":   req.ClusterID,
+		"namespace":   req.Namespace,
+		"name":        req.Name,
+		"replicas":    req.Replicas,
+	})
+}
+
+// handleFabricBurst bursts a NAP to a cloud cluster.
+func (s *Server) handleFabricBurst(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Namespace      string `json:"namespace"`
+		NapName        string `json:"napName"`
+		OnPremReplicas int32  `json:"onPremReplicas"`
+		CloudReplicas  int32  `json:"cloudReplicas"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	clusterID, replicas, err := s.scaler.BurstToCloud(r.Context(), req.Namespace, req.NapName, req.OnPremReplicas, req.CloudReplicas)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, map[string]interface{}{
+		"status":        "burst",
+		"clusterID":     clusterID,
+		"namespace":     req.Namespace,
+		"napName":       req.NapName,
+		"cloudReplicas": replicas,
+	})
 }

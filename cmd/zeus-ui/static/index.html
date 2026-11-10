@@ -444,6 +444,15 @@
                 <div class="nav-item" onclick="switchModule('tools')" title="Broadcast Tools">
                     <span class="icon">🛠️</span><span class="label">Tools</span>
                 </div>
+                <div class="nav-item" onclick="switchModule('security')" title="Security">
+                    <span class="icon">🔐</span><span class="label">Security</span>
+                </div>
+                <div class="nav-item" onclick="switchModule('tally')" title="Signal Tallies">
+                    <span class="icon">🚩</span><span class="label">Tallies</span>
+                </div>
+                <div class="nav-item" onclick="switchModule('fabric')" title="Fabric & Scale">
+                    <span class="icon">☁️</span><span class="label">Fabric</span>
+                </div>
             </aside>
 
             <div class="workspace">
@@ -533,6 +542,9 @@
                 else if(mod==='devices') c.innerHTML=await renderDevices();
                 else if(mod==='nap') c.innerHTML=await renderNAP();
                 else if(mod==='tools') c.innerHTML=await renderTools();
+                else if(mod==='security') c.innerHTML=await renderSecurity();
+                else if(mod==='tally') c.innerHTML=await renderTally();
+                else if(mod==='fabric') c.innerHTML=await renderFabric();
             }catch(e){
                 c.innerHTML='<div class="empty-state"><div class="icon">⚠️</div><h3>Error loading module</h3><p>'+escapeHtml(e.message)+'</p></div>';
                 console.error(e);
@@ -842,6 +854,130 @@
         }
 
         // ===== Tools Module =====
+        async function renderSecurity(){
+            let audit=[], principals=[];
+            try{
+                const d=await fetchAPI('/api/v1/infrastructure/security/audit'); audit=d.entries||[];
+            }catch(e){ audit=[]; }
+            try{
+                const d=await fetchAPI('/api/v1/infrastructure/security/principals'); principals=d.principals||[];
+            }catch(e){ principals=[]; }
+            return `
+            <div class="section-header"><div class="section-title"><span class="icon">🔐</span> Security & Access Control</div></div>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="label">Auth Methods</div><div class="value">3</div><div class="sub">API Key · JWT · mTLS</div></div>
+                <div class="stat-card"><div class="label">RBAC Roles</div><div class="value">4</div><div class="sub">Viewer · Operator · Engineer · Admin</div></div>
+                <div class="stat-card"><div class="label">Audit Events</div><div class="value">${audit.length}</div><div class="sub">Immutable log</div></div>
+                <div class="stat-card"><div class="label">Active Principals</div><div class="value">${principals.length}</div><div class="sub">Authenticated</div></div>
+            </div>
+            <div class="section-header" style="margin-top:2rem"><div class="section-title"><span class="icon">📋</span> Audit Log</div></div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Time</th><th>Method</th><th>Path</th><th>Action</th><th>Principal</th><th>Result</th></tr></thead>
+                    <tbody>
+                        ${audit.map(a=>`
+                            <tr><td><code>${escapeHtml(a.timestamp||'—')}</code></td><td>${escapeHtml(a.method||'—')}</td><td>${escapeHtml(a.path||'—')}</td><td>${escapeHtml(a.action||'—')}</td><td>${escapeHtml(a.principal||'—')}</td><td><span class="badge ${a.error?'fail':'success'}">${a.error?'denied':'allowed'}</span></td></tr>
+                        `).join('')||'<tr><td colspan="6" class="empty-state">No audit events</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+            <div class="section-header" style="margin-top:2rem"><div class="section-title"><span class="icon">👥</span> Principals</div></div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>ID</th><th>Name</th><th>Roles</th><th>Auth Method</th></tr></thead>
+                    <tbody>
+                        ${principals.map(p=>`
+                            <tr><td><code>${escapeHtml(p.id||'—')}</code></td><td>${escapeHtml(p.name||'—')}</td><td>${(p.roles||[]).join(', ')}</td><td>${escapeHtml(p.method||'—')}</td></tr>
+                        `).join('')||'<tr><td colspan="4" class="empty-state">No principals</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top:1.5rem; color:var(--text-muted); font-size:0.8rem;">Register API keys via POST /api/v1/infrastructure/security/apikey. mTLS principals are derived from client certificate subjects.</div>
+            `;
+        }
+
+        async function renderTally(){
+            let tallies=[];
+            try{
+                const d=await fetchAPI('/api/v1/infrastructure/tally'); tallies=d.tallies||[];
+            }catch(e){ tallies=[]; }
+            return `
+            <div class="section-header"><div class="section-title"><span class="icon">🚩</span> Signal Tallies</div></div>
+            <div style="margin-bottom:1rem; color:var(--text-muted); font-size:0.8rem;">Tallies track which signal feeds each destination (Program/Preview/Safe/Protect/Fault). Updated in real time via SSE.</div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Router</th><th>Destination</th><th>Source</th><th>State</th><th>Updated</th></tr></thead>
+                    <tbody>
+                        ${tallies.map(t=>`
+                            <tr><td><code>${escapeHtml(t.routerID||'—')}</code></td><td>${escapeHtml(t.destinationID||'—')}</td><td>${escapeHtml(t.sourceID||'—')}</td><td><span class="badge ${(t.state||'none').toLowerCase()}">${escapeHtml(t.state||'none')}</span></td><td>${escapeHtml(t.updatedAt||'—')}</td></tr>
+                        `).join('')||'<tr><td colspan="5" class="empty-state">No tallies</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+            <div class="section-header" style="margin-top:2rem"><div class="section-title"><span class="icon">🎯</span> Tally Controls</div></div>
+            <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+                <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                    <div style="font-size:0.75rem;color:var(--text-muted);">Route Take</div>
+                    <input type="text" id="tallyRouter" placeholder="router ID" style="padding:6px;border-radius:4px;border:1px solid var(--line);background:var(--bg-dark);color:var(--text-primary);font-size:0.8rem;">
+                    <input type="text" id="tallySource" placeholder="source ID" style="padding:6px;border-radius:4px;border:1px solid var(--line);background:var(--bg-dark);color:var(--text-primary);font-size:0.8rem;">
+                    <input type="text" id="tallyDest" placeholder="destination ID" style="padding:6px;border-radius:4px;border:1px solid var(--line);background:var(--bg-dark);color:var(--text-primary);font-size:0.8rem;">
+                    <button class="primary" onclick="tallyRoute()">Route</button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                    <div style="font-size:0.75rem;color:var(--text-muted);">Clear / Protect</div>
+                    <input type="text" id="tallyClearRouter" placeholder="router ID" style="padding:6px;border-radius:4px;border:1px solid var(--line);background:var(--bg-dark);color:var(--text-primary);font-size:0.8rem;">
+                    <input type="text" id="tallyClearDest" placeholder="destination ID" style="padding:6px;border-radius:4px;border:1px solid var(--line);background:var(--bg-dark);color:var(--text-primary);font-size:0.8rem;">
+                    <button onclick="tallyClear()" style="background:transparent;border-color:var(--fail-border);color:var(--fail);">Clear</button>
+                    <button onclick="tallyProtect()" style="background:transparent;border-color:var(--warn-border);color:var(--warn);">Protect</button>
+                </div>
+            </div>
+            `;
+        }
+
+        async function renderFabric(){
+            let clusters=[];
+            try{
+                const d=await fetchAPI('/api/v1/infrastructure/fabric/clusters'); clusters=d.clusters||[];
+            }catch(e){ clusters=[]; }
+            return `
+            <div class="section-header"><div class="section-title"><span class="icon">☁️</span> Fabric & Multi-Cluster</div></div>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="label">Clusters</div><div class="value">${clusters.length}</div><div class="sub">Registered</div></div>
+                <div class="stat-card"><div class="label">Control Plane</div><div class="value">Zeus Kernel</div><div class="sub">Centralized</div></div>
+                <div class="stat-card"><div class="label">Data Plane</div><div class="value">NAP Pods</div><div class="sub">Distributed</div></div>
+                <div class="stat-card"><div class="label">Mode</div><div class="value">Hybrid</div><div class="sub">On-prem + Cloud</div></div>
+            </div>
+            <div class="section-header" style="margin-top:1rem"><div class="section-title"><span class="icon">🏗️</span> Registered Clusters</div></div>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>ID</th><th>Name</th><th>Environment</th><th>Region</th><th>Capacity</th><th>Action</th></tr></thead>
+                    <tbody>
+                        ${clusters.map(c=>`
+                            <tr><td><code>${escapeHtml(c.id||'—')}</code></td><td>${escapeHtml(c.name||'—')}</td><td><span class="badge ${c.environment==='cloud'?'online':c.environment==='hybrid'?'degraded':'pending'}">${escapeHtml(c.environment||'—')}</span></td><td>${escapeHtml(c.region||'—')}</td><td>${c.capacity||'—'}</td><td><button onclick="fabricScale('${escapeHtml(c.id)}')">Scale</button></td></tr>
+                        `).join('')||'<tr><td colspan="6" class="empty-state">No clusters</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+            <div class="section-header" style="margin-top:2rem"><div class="section-title"><span class="icon">⚖️</span> Dynamic Scale On Demand</div></div>
+            <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+                <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                    <div style="font-size:0.75rem;color:var(--text-muted);">Scale NAP</div>
+                    <input type="text" id="scaleNap" placeholder="NAP/deployment name" style="padding:6px;border-radius:4px;border:1px solid var(--line);background:var(--bg-dark);color:var(--text-primary);font-size:0.8rem;">
+                    <input type="number" id="scaleReplicas" placeholder="replicas" value="1" style="padding:6px;border-radius:4px;border:1px solid var(--line);background:var(--bg-dark);color:var(--text-primary);font-size:0.8rem;">
+                    <button class="primary" onclick="scaleNap()">Scale</button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:0.5rem;">
+                    <div style="font-size:0.75rem;color:var(--text-muted);">Burst to Cloud</div>
+                    <input type="text" id="burstNap" placeholder="NAP name" style="padding:6px;border-radius:4px;border:1px solid var(--line);background:var(--bg-dark);color:var(--text-primary);font-size:0.8rem;">
+                    <input type="number" id="burstOnPrem" placeholder="on-prem replicas" value="0" style="padding:6px;border-radius:4px;border:1px solid var(--line);background:var(--bg-dark);color:var(--text-primary);font-size:0.8rem;">
+                    <input type="number" id="burstCloud" placeholder="cloud replicas" value="2" style="padding:6px;border-radius:4px;border:1px solid var(--line);background:var(--bg-dark);color:var(--text-primary);font-size:0.8rem;">
+                    <button onclick="burstNap()" style="background:transparent;border-color:var(--accent-border);color:var(--accent);">Burst</button>
+                </div>
+            </div>
+            <div style="margin-top:1rem; color:var(--text-muted); font-size:0.8rem;">Control plane (Zeus Kernel) is separated from data plane (NAP pods). Scale dynamically via HPA + cluster autoscaler integration.</div>
+            `;
+        }
+
         async function renderTools(){
             let tools=[];
             try{ const d=await fetchAPI('/api/v1/broadcast-tools'); tools=d.tools||[]; }catch(e){ tools=[{id:'t1',name:'NAP Conformance Check',category:'conformance',status:'idle',lastRun:'—',result:'—'},{id:'t2',name:'Runbook Validator',category:'validation',status:'idle',lastRun:'—',result:'—'},{id:'t3',name:'NMOS IS-04 Discovery',category:'discovery',status:'idle',lastRun:'—',result:'—'}]; }
@@ -859,6 +995,77 @@
             `;
         }
         window.runTool=function(id){ showToast('Tool '+id+' queued','info'); };
+
+        // ===== Tally Actions =====
+        window.tallyRoute=function(){
+            const router=document.getElementById('tallyRouter').value;
+            const source=document.getElementById('tallySource').value;
+            const dest=document.getElementById('tallyDest').value;
+            if(!router||!source||!dest){ showToast('Fill router, source, destination','warn'); return; }
+            fetch(`${API_BASE}/api/v1/infrastructure/tally/route`,{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({routerID:router,sourceID:source,destinationID:dest})
+            }).then(r=>r.ok?showToast('Tally route recorded: '+router+' '+source+' → '+dest,'success'):showToast('Tally route failed','error'))
+              .catch(e=>showToast('Tally route error: '+e.message,'error'));
+        };
+        window.tallyClear=function(){
+            const router=document.getElementById('tallyClearRouter').value;
+            const dest=document.getElementById('tallyClearDest').value;
+            if(!router||!dest){ showToast('Fill router and destination','warn'); return; }
+            fetch(`${API_BASE}/api/v1/infrastructure/tally/clear`,{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({routerID:router,destinationID:dest})
+            }).then(r=>r.ok?showToast('Tally cleared: '+router+' '+dest,'success'):showToast('Tally clear failed','error'))
+              .catch(e=>showToast('Tally clear error: '+e.message,'error'));
+        };
+        window.tallyProtect=function(){
+            const router=document.getElementById('tallyClearRouter').value;
+            const dest=document.getElementById('tallyClearDest').value;
+            if(!router||!dest){ showToast('Fill router and destination','warn'); return; }
+            fetch(`${API_BASE}/api/v1/infrastructure/tally/protect`,{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({routerID:router,destinationID:dest})
+            }).then(r=>r.ok?showToast('Tally protected: '+router+' '+dest,'success'):showToast('Tally protect failed','error'))
+              .catch(e=>showToast('Tally protect error: '+e.message,'error'));
+        };
+
+        // ===== Fabric Actions =====
+        window.fabricScale=function(clusterID){
+            const replicas=prompt('Replicas for cluster '+clusterID+':','1');
+            if(replicas===null) return;
+            fetch(`${API_BASE}/api/v1/infrastructure/fabric/scale`,{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({clusterID:clusterID,namespace:'default',name:'zeus-kernel',replicas:parseInt(replicas)||1})
+            }).then(r=>r.ok?showToast('Cluster scaled','success'):showToast('Scale failed','error'))
+              .catch(e=>showToast('Scale error: '+e.message,'error'));
+        };
+        window.scaleNap=function(){
+            const name=document.getElementById('scaleNap').value;
+            const replicas=parseInt(document.getElementById('scaleReplicas').value)||1;
+            if(!name){ showToast('Enter NAP name','warn'); return; }
+            fetch(`${API_BASE}/api/v1/infrastructure/fabric/scale`,{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({clusterID:'on-prem',namespace:'default',name:name,replicas:replicas})
+            }).then(r=>r.ok?showToast('NAP '+name+' scaled to '+replicas,'success'):showToast('Scale failed','error'))
+              .catch(e=>showToast('Scale error: '+e.message,'error'));
+        };
+        window.burstNap=function(){
+            const name=document.getElementById('burstNap').value;
+            const onPrem=parseInt(document.getElementById('burstOnPrem').value)||0;
+            const cloud=parseInt(document.getElementById('burstCloud').value)||2;
+            if(!name){ showToast('Enter NAP name','warn'); return; }
+            fetch(`${API_BASE}/api/v1/infrastructure/fabric/burst`,{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({namespace:'default',napName:name,onPremReplicas:onPrem,cloudReplicas:cloud})
+            }).then(r=>r.ok?showToast('Burst '+name+' to cloud ('+cloud+' replicas)','success'):showToast('Burst failed','error'))
+              .catch(e=>showToast('Burst error: '+e.message,'error'));
+        };
 
         // ===== Environment Switcher =====
         $el('envSelect').addEventListener('change',function(){
