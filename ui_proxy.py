@@ -20,6 +20,7 @@ Usage:
 Then open: http://localhost:8082
 """
 
+import datetime
 import http.client
 import http.server
 import json
@@ -154,6 +155,12 @@ class ZeusProxyHandler(http.server.SimpleHTTPRequestHandler):
 
         if path == "/api/v1/health":
             self._send_json({"service": "zeus-ui", "status": "healthy"})
+            return
+
+        # ===== SSE Events =====
+
+        if path == "/api/v1/events":
+            self._handle_sse()
             return
 
         if path == "/api/v1/stats":
@@ -380,8 +387,66 @@ class ZeusProxyHandler(http.server.SimpleHTTPRequestHandler):
                 "srt": {"state": "up", "paths": 2, "rttMs": 45},
                 "rist": {"state": "up", "paths": 2},
             },
-            "timestamp": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.datetime.now(datetime.UTC).isoformat() + "Z",
         })
+
+    def _handle_sse(self):
+        """SSE event stream for real-time dashboard updates."""
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+
+        import datetime
+        import time
+
+        # Send initial connected event
+        self.wfile.write(b"event: connected\ndata: {\"status\":\"connected\"}\n\n")
+        self.wfile.flush()
+
+        # Send periodic stats updates
+        for i in range(120):  # Run for ~2 minutes max per connection
+            try:
+                time.sleep(5)
+                runbooks, _ = list_namespaced_resource("zeusrunbooks", timeout=5)
+                naps, _ = list_namespaced_resource("zeusapplicationpackages", timeout=5)
+                registry, _ = list_namespaced_resource("napregistries", timeout=5)
+
+                rb_phases = {}
+                for rb in runbooks:
+                    p = rb.get("phase", "unknown")
+                    rb_phases[p] = rb_phases.get(p, 0) + 1
+                nap_phases = {}
+                for nap in naps:
+                    p = nap.get("phase", "unknown")
+                    nap_phases[p] = nap_phases.get(p, 0) + 1
+                reg_phases = {}
+                for reg in registry:
+                    p = reg.get("phase", "unknown")
+                    reg_phases[p] = reg_phases.get(p, 0) + 1
+
+                stats = {
+                    "runbooks": {"total": len(runbooks), "phases": rb_phases},
+                    "naps": {"total": len(naps), "phases": nap_phases},
+                    "registry": {"total": len(registry), "phases": reg_phases},
+                    "networkProtocols": {
+                        "bgp": {"state": "up", "sessions": 2, "disruptions": 0},
+                        "igmp": {"state": "up", "groups": 4},
+                        "srt": {"state": "up", "paths": 2, "rttMs": 45},
+                        "rist": {"state": "up", "paths": 2},
+                    },
+                    "timestamp": datetime.datetime.now(datetime.UTC).isoformat() + "Z",
+                }
+
+                msg = f"event: stats\ndata: {json.dumps(stats)}\n\n"
+                self.wfile.write(msg.encode("utf-8"))
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                break
+            except Exception:
+                continue
 
 
 class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
