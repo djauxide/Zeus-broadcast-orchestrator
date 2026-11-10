@@ -1,5 +1,18 @@
+# Logs
+ui_proxy.log
+ui_proxy.err
 
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
 bin/
-cover.out
+dist/
+
+# IDE
+.idea/
+.vscode/
 *.swp
-.env
+*.swo
+cover.out
