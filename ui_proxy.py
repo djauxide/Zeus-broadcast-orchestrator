@@ -20,6 +20,7 @@ Usage:
 Then open: http://localhost:8082
 """
 
+import base64
 import datetime
 import http.client
 import http.server
@@ -27,12 +28,16 @@ import json
 import os
 import socketserver
 import ssl
+import sys
+import tempfile
 import threading
+
+import yaml
 
 STATIC_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "cmd", "zeus-ui", "static"
 )
-KUBE_API_HOST = "172.26.251.113"
+KUBE_API_HOST = "127.0.0.1"
 KUBE_API_PORT = 42625
 PROXY_PORT = 8082
 
@@ -40,10 +45,46 @@ PROXY_PORT = 8082
 ZEUS_GROUP = "core.zeus.broadcast"
 ZEUS_VERSION = "v1alpha1"
 
+# Load kubeconfig for client cert authentication
+KUBECONFIG_PATH = os.path.expanduser("~/.kube/config")
+KUBE_CLIENT_CERT = None
+KUBE_CLIENT_KEY = None
+
+if os.path.exists(KUBECONFIG_PATH):
+    with open(KUBECONFIG_PATH, "r") as f:
+        kubeconfig = yaml.safe_load(f)
+    users = kubeconfig.get("users", [])
+    for user in users:
+        user_data = user.get("user", {})
+        cert_data = user_data.get("client-certificate-data")
+        key_data = user_data.get("client-key-data")
+        if cert_data and key_data:
+            # Write cert and key to temp files for ssl context
+            cert_file = tempfile.NamedTemporaryFile(
+                mode="wb", suffix=".pem", delete=False
+            )
+            cert_file.write(base64.b64decode(cert_data))
+            cert_file.close()
+            KUBE_CLIENT_CERT = cert_file.name
+
+            key_file = tempfile.NamedTemporaryFile(
+                mode="wb", suffix=".pem", delete=False
+            )
+            key_file.write(base64.b64decode(key_data))
+            key_file.close()
+            KUBE_CLIENT_KEY = key_file.name
+            break
+    if KUBE_CLIENT_CERT:
+        print(f"KUBE_AUTH: Loaded client cert from {KUBECONFIG_PATH}", file=sys.stderr, flush=True)
+    else:
+        print("KUBE_AUTH: No client cert found in kubeconfig, using anonymous auth", file=sys.stderr, flush=True)
+
 
 def kube_get(path, timeout=15):
     """Make a GET request to the kind k8s API server and return parsed JSON."""
     context = ssl._create_unverified_context()
+    if KUBE_CLIENT_CERT and KUBE_CLIENT_KEY:
+        context.load_cert_chain(KUBE_CLIENT_CERT, KUBE_CLIENT_KEY)
     conn = http.client.HTTPSConnection(
         KUBE_API_HOST, KUBE_API_PORT, timeout=timeout, context=context
     )
@@ -59,6 +100,7 @@ def kube_get(path, timeout=15):
         data = resp.read()
         return json.loads(data), resp.status
     except Exception as e:
+        print(f"KUBE_GET ERROR: {path}: {e}", file=sys.stderr, flush=True)
         return None, 502
     finally:
         conn.close()
