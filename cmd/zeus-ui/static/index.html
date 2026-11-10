@@ -1077,8 +1077,22 @@
         function connectSSE(){
             if(sse){ try{sse.close();}catch(e){} sse=null; }
             if(pollTimer){ clearInterval(pollTimer); pollTimer=null; }
+
+            var sseTimeout = setTimeout(function(){
+                if(!sse){
+                    // SSE never opened - fall back to polling silently
+                    $el('sseDot').className='sse-dot';
+                    $el('sseDot').style.backgroundColor='var(--warn)';
+                    $el('sseText').textContent='Polling (SSE unavailable)';
+                    if(!pollTimer){
+                        pollTimer=setInterval(()=>{ renderModule(currentModule); },15000);
+                    }
+                }
+            }, 5000);
+
             sse=new EventSource(`${API_BASE}/api/v1/events`);
             sse.onopen=()=>{
+                clearTimeout(sseTimeout);
                 reconnectDelay=1000;
                 $el('sseDot').className='sse-dot live';
                 $el('sseText').textContent='Live';
@@ -1088,6 +1102,7 @@
                 try{ const d=JSON.parse(ev.data); if(d.event==='stats'){ /* stats update handled by dashboard poll */ } }catch(e){}
             };
             sse.onerror=()=>{
+                clearTimeout(sseTimeout);
                 $el('sseDot').className='sse-dot';
                 $el('sseDot').style.backgroundColor='var(--fail)';
                 $el('sseText').textContent='Reconnecting…';
