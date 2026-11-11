@@ -446,7 +446,7 @@
 
         <div class="main-body">
             <aside class="sidebar">
-                <div class="nav-item active" onclick="switchModule('dashboard')" title="Dashboard">
+                <div class="nav-item active" onclick="switchModule('dashboard', this)" title="Dashboard">
                     <span class="icon">📊</span><span class="label">Dashboard</span>
                 </div>
                 <div class="nav-item" onclick="switchModule('router')" title="Router Control">
@@ -506,7 +506,6 @@
 
     <script>
         const API_BASE = window.location.origin;
-        let ws = null;
         let sse = null;
         let reconnectDelay = 1000;
         let currentModule = 'dashboard';
@@ -553,8 +552,12 @@
         // ===== Module Switching =====
         function switchModule(mod){
             currentModule=mod;
-            document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-            event.currentTarget.classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n=>{
+                n.classList.remove('active');
+                if(n.textContent.toLowerCase().includes(mod)){
+                    n.classList.add('active');
+                }
+            });
             $el('wsBadge').textContent='Live';
             renderModule(mod);
         }

@@ -31,6 +31,7 @@ import ssl
 import sys
 import tempfile
 import threading
+import time
 
 import yaml
 
@@ -78,6 +79,19 @@ if os.path.exists(KUBECONFIG_PATH):
         print(f"KUBE_AUTH: Loaded client cert from {KUBECONFIG_PATH}", file=sys.stderr, flush=True)
     else:
         print("KUBE_AUTH: No client cert found in kubeconfig, using anonymous auth", file=sys.stderr, flush=True)
+
+# Cleanup temp files on exit
+import atexit
+
+def _cleanup_temp_files():
+    for f in (KUBE_CLIENT_CERT, KUBE_CLIENT_KEY):
+        if f and os.path.exists(f):
+            try:
+                os.unlink(f)
+            except OSError:
+                pass
+
+atexit.register(_cleanup_temp_files)
 
 
 def kube_get(path, timeout=15):
@@ -308,6 +322,21 @@ class ZeusProxyHandler(http.server.SimpleHTTPRequestHandler):
             })
             return
 
+        if path == "/api/v1/patch":
+            self._send_json({
+                "sources": [
+                    {"id": "s1", "name": "Camera 1 SDI Out", "type": "video"},
+                    {"id": "s2", "name": "Camera 2 SDI Out", "type": "video"},
+                    {"id": "s3", "name": "Graphics Out", "type": "video"},
+                ],
+                "dests": [
+                    {"id": "d1", "name": "Vision Mixer In 1", "type": "video"},
+                    {"id": "d2", "name": "Replay In", "type": "video"},
+                    {"id": "d3", "name": "Multiviewer In", "type": "video"},
+                ],
+            })
+            return
+
         if path == "/api/v1/broadcast-tools":
             self._send_json({
                 "tools": [
@@ -440,9 +469,6 @@ class ZeusProxyHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Connection", "keep-alive")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
-
-        import datetime
-        import time
 
         # Send initial connected event
         self.wfile.write(b"event: connected\ndata: {\"status\":\"connected\"}\n\n")
