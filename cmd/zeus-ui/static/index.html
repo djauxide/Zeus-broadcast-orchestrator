@@ -1114,14 +1114,13 @@
             if(pollTimer){ clearInterval(pollTimer); pollTimer=null; }
 
             var sseTimeout = setTimeout(function(){
-                if(!sse){
-                    // SSE never opened - fall back to polling silently
-                    $el('sseDot').className='sse-dot';
-                    $el('sseDot').style.backgroundColor='var(--warn)';
-                    $el('sseText').textContent='Polling (SSE unavailable)';
-                    if(!pollTimer){
-                        pollTimer=setInterval(()=>{ renderModule(currentModule); },15000);
-                    }
+                // SSE never opened within 5s - fall back to polling
+                $el('sseDot').className='sse-dot';
+                $el('sseDot').style.backgroundColor='var(--warn)';
+                $el('sseText').textContent='Polling (SSE unavailable)';
+                if(!pollTimer){
+                    pollTimer=setInterval(()=>{ renderModule(currentModule); },15000);
+                    showToast('SSE unavailable - polling fallback','error');
                 }
             }, 5000);
 
@@ -1146,7 +1145,7 @@
                     pollTimer=setInterval(()=>{ renderModule(currentModule); },15000);
                     showToast('Real-time connection lost - polling fallback','error');
                 }
-                setTimeout(()=>{ if(!sse) connectSSE(); },reconnectDelay);
+                setTimeout(()=>{ connectSSE(); },reconnectDelay);
                 reconnectDelay=Math.min(reconnectDelay*2,30000);
             };
         }
