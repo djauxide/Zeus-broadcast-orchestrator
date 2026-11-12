@@ -267,6 +267,10 @@ spec:
                 type: array
               phase:
                 type: string
+              suggestedAction:
+                description: SuggestedAction is the operator-facing remediation hint
+                  written by the reconciler.
+                type: string
             type: object
         type: object
     served: true

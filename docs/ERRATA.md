@@ -50,10 +50,17 @@ Podman machine). This is an upstream bug, not a Zeus bug.
 **Spec:** §5 ships a ValidatingWebhookConfiguration with a `caBundle`
 placeholder; §6 expects `make deploy` to work.
 **Problem:** kind has no serving certificate; the API server rejects the
-webhook until a CA is injected.
-**Fix:** the chart exposes a `Service` on 9443 and annotates the
-ValidatingWebhookConfiguration with `cert-manager.io/inject-ca-from`. Install
-cert-manager first (`hack/webhook-tls.yaml` is the dev fallback).
+webhook until a CA is injected. A fresh install also failed because the
+Deployment mounted a `zeus-kernel-webhook-tls` Secret that the chart never
+created.
+**Fix:** `charts/zeus-kernel` now generates a self-signed CA and serving
+certificate with Helm (`genCA`/`genSignedCert`), writes them to the
+`zeus-kernel-webhook-tls` Secret, and injects the CA into the webhook
+`caBundle` by default. For certificate rotation via cert-manager, set
+`webhook.certManager.enabled=true`; the chart then creates an Issuer and a
+Certificate and relies on cainjector. Set `webhook.enabled=false` only when
+another control plane owns admission. The chart also passes
+`--enable-webhook` to the manager so the flag and the manifests cannot drift.
 
 ## E-008 — `MxlReceiver.spec.flowID` must be a UUID
 **Spec:** derived `flowID` as `<runbook>-<nap>`.
@@ -133,3 +140,75 @@ reach `Live` with the example.
 **Fix:** `hack/probe/` contains a locally built, dependency-free probe NAP used
 for end-to-end verification. `examples/vm-nap.yaml` is retained unchanged as
 the spec artifact.
+
+## E-018 — shipped CRDs lagged the Go API types
+**Spec:** `ZeusApplicationPackage` gained `spec.routing` and the NMOS
+`senderMatch`/`mediaType`/`essence`/`sampling` fields in Phase 2/3;
+`ZeusRunbook` gained `status.suggestedAction`.
+**Problem:** the generated CRDs in `charts/zeus-crds/crds/` were never
+regenerated, so the API server pruned those fields. A NAP with
+`spec.routing.provider` applied cleanly but reached the reconciler with an
+empty routing block; Phase 3 routing could not be exercised at all.
+**Fix:** the CRD schemas now include the fields the controller reads (verified
+with `kubectl get crd ... -o json`). `make manifests` remains the generator of
+record; the checked-in chart copy is kept in sync by hand because
+`config/crd/bases` only contains the two originally generated CRDs.
+
+## E-019 — two runbooks cannot place the same NAP name
+**Spec:** `ensureDeployment` named the Deployment after `placement.Name` and
+labelled pods `app=<placement>`.
+**Problem:** the two shipped examples both place `vision-mixer-1`, so the
+second runbook failed with
+`Object default/vision-mixer-1 is already owned by another ZeusRunbook`.
+Scaling a NAP across runbooks is a normal broadcast workflow, not an error.
+**Fix:** cluster object names and pod labels are scoped by the owning runbook
+(`placementKey`, `zeus.broadcast/runbook` label). Deployments are now
+`<runbook>-<placement>`; `MxlReceiver` names use the same key, so teardown
+remains symmetric. Fabric receivers stay keyed by the placement for a single
+runbook but no longer collide across runbooks.
+
+## E-020 — Deployment conflict reported as `DeployError`
+**Problem:** `controllerutil.CreateOrUpdate` performs one optimistic
+read/write cycle. On the first reconcile of a new placement the Deployment
+controller writes status concurrently, so the update lost the race and the
+runbook went `Degraded/DeployError` with
+`the object has been modified; please apply your changes`.
+**Fix:** `ensureDeployment` wraps the call in
+`retry.RetryOnConflict(retry.DefaultRetry, ...)`, which re-reads and retries
+instead of surfacing a transient conflict as a deployment failure.
+
+## E-021 — dependency phases were sticky
+**Problem:** `setPhase` returned no requeue. A runbook that reached
+`Degraded/SecretNotFound` stayed there after the operator created the Secret;
+a `Reconciling/PodNotFound` runbook stayed there after the image was pushed.
+Only an unrelated runbook edit or the multi-hour informer resync cleared it.
+**Fix:** `requeueFor(reason)` returns a 30 s retry for reasons owned by
+another actor (SecretNotFound, PodNotFound, NAPNotValidated, NAPNotFound,
+DeployError, FabricNotInstalled, PathDown). Both the transition path and the
+"same phase, same reason" fast path honour it.
+
+## E-022 — missing mxl CRDs produced a generic reconcile error
+**Problem:** when mxl-k8s is not installed the fabric client fails with
+`no matches for kind "MxlReceiver" in version "mxl.qvest-digital.com/v1alpha1"`,
+which is a `*meta.NoKindMatchError`, not an `apierrors.IsNotFound`. The
+controller therefore never set the intended `Degraded/FabricNotInstalled`
+phase and logged the raw error on every retry.
+**Fix:** the fabric branch also checks `meta.IsNoMatchError(err)` and reports
+`FabricNotInstalled` with the operator hint "install the mxl chart".
+
+## E-023 — a stale operator console can keep serving port 8082 on Windows
+**Problem:** after a host restart, `http://127.0.0.1:8082/` served the SPA with
+`200`, but every `/api/v1/*` call was answered by closing the connection
+without a response (`RemoteDisconnected` after 3–4 s). `netstat -ano` showed a
+listener owned by a process from the previous session. `allow_reuse_address =
+True` sets `SO_REUSEADDR`; on Windows that lets a second process bind a port
+that another process is already listening on, so the freshly started proxy
+could come up alongside the stale one and request handling became
+non-deterministic.
+**Fix:** the server binds with `SO_EXCLUSIVEADDRUSE` on Windows and only sets
+`SO_REUSEADDR` elsewhere, so a second instance now fails immediately instead of
+silently splitting traffic. `main()` reports `cannot listen on port 8082 …
+Another operator console may already be running.` and exits non-zero. The fix
+also surfaced a missing `import socket`, which would have crashed every bind.
+
+

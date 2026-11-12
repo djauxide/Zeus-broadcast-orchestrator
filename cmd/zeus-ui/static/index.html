@@ -148,7 +148,6 @@
         .sys-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); }
         .sys-dot.degraded { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
         .sys-dot.down { background: var(--fail); box-shadow: 0 0 8px var(--fail); }
-
         .timecode {
             font-family: var(--font-mono);
             font-size: 0.9rem;
@@ -257,6 +256,9 @@
         .badge.pending { background: rgba(107, 118, 132, 0.15); color: var(--text-muted); border: 1px solid rgba(107, 118, 132, 0.3); }
         .badge.active { background: rgba(52, 152, 219, 0.15); color: var(--info); border: 1px solid rgba(52, 152, 219, 0.3); }
         .badge.idle { background: rgba(107, 118, 132, 0.15); color: var(--text-muted); border: 1px solid rgba(107, 118, 132, 0.3); }
+        .badge.success, .badge.online { background: var(--success-dim); color: var(--success); border: 1px solid var(--success-border); }
+        .badge.fail, .badge.error { background: var(--fail-dim); color: var(--fail); border: 1px solid var(--fail-border); }
+        .badge.warn, .badge.warning { background: rgba(241, 196, 15, 0.15); color: var(--warn); border: 1px solid rgba(241, 196, 15, 0.35); }
 
         /* ===== Code ===== */
         code { font-family: var(--font-mono); font-size: 0.82rem; background: rgba(7, 10, 13, 0.6); padding: 2px 6px; border-radius: 4px; color: #a5f3fc; }
@@ -276,22 +278,38 @@
         .router-sidebar { width: 300px; border-right: 1px solid var(--line); display: flex; flex-direction: column; }
         .router-main { flex: 1; position: relative; overflow: hidden; display: flex; flex-direction: column; }
         .router-controls { padding: 1rem; border-bottom: 1px solid var(--line); background: var(--bg-card); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-        .router-grid-wrap { flex: 1; overflow: auto; padding: 1rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 4px; }
+        .router-grid-wrap { flex: 1; overflow: auto; padding: 1rem; display: grid; gap: 4px; align-content: start; }
+        .router-corner, .router-col-label, .router-row-label {
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.6rem; color: var(--text-muted); font-weight: 700;
+            letter-spacing: 0.4px; text-transform: uppercase;
+        }
+        .router-corner { text-align: center; line-height: 1.2; }
+        .router-col-label { min-height: 34px; border-bottom: 1px solid var(--line); }
+        .router-row-label { min-height: 34px; justify-content: flex-end; padding-right: 10px; border-right: 1px solid var(--line); }
         .router-cell {
-            aspect-ratio: 1;
+            height: 34px;
             border: 1px solid var(--line);
-            border-radius: 6px;
+            border-radius: 4px;
             background: var(--router-free);
             display: flex; align-items: center; justify-content: center;
-            font-size: 0.65rem; font-weight: 700; color: var(--text-muted);
+            font-size: 0.62rem; font-weight: 700; color: var(--text-muted);
             cursor: pointer; transition: all var(--transition);
             position: relative;
+            font-family: var(--font-mono);
         }
         .router-cell:hover { border-color: var(--accent); transform: translateY(-1px); z-index: 2; box-shadow: var(--shadow); }
         .router-cell.active { background: var(--router-active); color: #0a1218; border-color: var(--success); box-shadow: 0 0 10px rgba(46,204,113,0.3); }
-        .router-cell.locked { background: var(--router-locked); color: #fff; border-color: var(--fail); box-shadow: 0 0 10px rgba(231,76,60,0.3); }
+        .router-cell.locked { background: var(--router-locked); color: #fff; border-color: var(--fail); box-shadow: 0 0 10px rgba(231,76,60,0.3); cursor: not-allowed; }
         .router-cell.protect { background: var(--router-protect); color: #0a1218; border-color: var(--warn); box-shadow: 0 0 10px rgba(241,196,15,0.3); }
-        .router-cell .lbl { position: absolute; top: 2px; left: 4px; font-size: 0.55rem; opacity: 0.7; pointer-events: none; }
+        .router-cell .xp { font-size: 0.7rem; }
+        .router-card {
+            padding: 10px; border: 1px solid var(--line); border-radius: 8px;
+            margin-bottom: 8px; background: var(--bg-dark); cursor: pointer;
+            transition: all var(--transition);
+        }
+        .router-card:hover { border-color: var(--line-bright); background: var(--bg-hover); }
+        .router-card.selected { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
 
         /* ===== Rack System ===== */
         .rack-section { display: flex; gap: 1rem; height: calc(100vh - 280px); }
@@ -399,6 +417,8 @@
         .sse-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 0.72rem; font-weight: 600; }
         .sse-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
         .sse-dot.live { background: var(--success); animation: pulse 2s infinite; box-shadow: 0 0 8px var(--success); }
+        .sse-dot.warn { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+        .sse-dot.fail { background: var(--fail); box-shadow: 0 0 8px var(--fail); }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
         /* ===== Responsive ===== */
@@ -446,37 +466,37 @@
 
         <div class="main-body">
             <aside class="sidebar">
-                <div class="nav-item active" onclick="switchModule('dashboard', this)" title="Dashboard">
+                <div class="nav-item active" data-module="dashboard" onclick="switchModule('dashboard')" title="Dashboard">
                     <span class="icon">📊</span><span class="label">Dashboard</span>
                 </div>
-                <div class="nav-item" onclick="switchModule('router')" title="Router Control">
+                <div class="nav-item" data-module="router" onclick="switchModule('router')" title="Router Control">
                     <span class="icon">🔀</span><span class="label">Router</span>
                 </div>
-                <div class="nav-item" onclick="switchModule('rack')" title="Virtual Rack">
+                <div class="nav-item" data-module="rack" onclick="switchModule('rack')" title="Virtual Rack">
                     <span class="icon">🖼️</span><span class="label">Rack</span>
                 </div>
-                <div class="nav-item" onclick="switchModule('patch')" title="Patch Bay">
+                <div class="nav-item" data-module="patch" onclick="switchModule('patch')" title="Patch Bay">
                     <span class="icon">🔌</span><span class="label">Patch</span>
                 </div>
-                <div class="nav-item" onclick="switchModule('monitor')" title="Monitoring">
+                <div class="nav-item" data-module="monitor" onclick="switchModule('monitor')" title="Monitoring">
                     <span class="icon">📺</span><span class="label">Monitor</span>
                 </div>
-                <div class="nav-item" onclick="switchModule('devices')" title="Device Control">
+                <div class="nav-item" data-module="devices" onclick="switchModule('devices')" title="Device Control">
                     <span class="icon">🎛️</span><span class="label">Devices</span>
                 </div>
-                <div class="nav-item" onclick="switchModule('nap')" title="NAP & Runbook">
+                <div class="nav-item" data-module="nap" onclick="switchModule('nap')" title="NAP & Runbook">
                     <span class="icon">📦</span><span class="label">NAP</span>
                 </div>
-                <div class="nav-item" onclick="switchModule('tools')" title="Broadcast Tools">
+                <div class="nav-item" data-module="tools" onclick="switchModule('tools')" title="Broadcast Tools">
                     <span class="icon">🛠️</span><span class="label">Tools</span>
                 </div>
-                <div class="nav-item" onclick="switchModule('security')" title="Security">
+                <div class="nav-item" data-module="security" onclick="switchModule('security')" title="Security">
                     <span class="icon">🔐</span><span class="label">Security</span>
                 </div>
-                <div class="nav-item" onclick="switchModule('tally')" title="Signal Tallies">
+                <div class="nav-item" data-module="tally" onclick="switchModule('tally')" title="Signal Tallies">
                     <span class="icon">🚩</span><span class="label">Tallies</span>
                 </div>
-                <div class="nav-item" onclick="switchModule('fabric')" title="Fabric & Scale">
+                <div class="nav-item" data-module="fabric" onclick="switchModule('fabric')" title="Fabric & Scale">
                     <span class="icon">☁️</span><span class="label">Fabric</span>
                 </div>
             </aside>
@@ -553,20 +573,49 @@
         function switchModule(mod){
             currentModule=mod;
             document.querySelectorAll('.nav-item').forEach(n=>{
-                n.classList.remove('active');
-                if(n.textContent.toLowerCase().includes(mod)){
-                    n.classList.add('active');
-                }
+                n.classList.toggle('active', n.dataset.module === mod);
             });
             $el('wsBadge').textContent='Live';
             renderModule(mod);
         }
         function refreshModule(){ renderModule(currentModule); showToast('Module refreshed','info'); }
 
+        window.exportConfig=async function(){
+            try{
+                const results=await Promise.allSettled([
+                    fetchAPI('/api/v1/zeusrunbooks'),
+                    fetchAPI('/api/v1/zeusapplicationpackages'),
+                    fetchAPI('/api/v1/napregistry'),
+                    fetchAPI('/api/v1/routing')
+                ]);
+                const pick=(i,key,fallback)=>results[i].status==='fulfilled'?(results[i].value[key]||fallback):fallback;
+                const payload={
+                    exportedAt:new Date().toISOString(),
+                    environment:$el('envSelect').value,
+                    runbooks:pick(0,'runbooks',[]),
+                    naps:pick(1,'naps',[]),
+                    registry:pick(2,'registries',[]),
+                    routers:pick(3,'routers',[])
+                };
+                const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+                const url=URL.createObjectURL(blob);
+                const link=document.createElement('a');
+                link.href=url;
+                link.download='zeus-config-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(url);
+                showToast('Configuration exported','success');
+            }catch(e){
+                showToast('Export failed: '+e.message,'error');
+            }
+        };
+
         // ===== Render Modules =====
         async function renderModule(mod){
             const c=$el('wsContent');
-            const titles={'dashboard':'Dashboard','router':'Router Control','rack':'Virtual Rack','patch':'Patch Bay','monitor':'Monitoring','devices':'Device Control','nap':'NAP & Runbook','tools':'Broadcast Tools'};
+            const titles={'dashboard':'Dashboard','router':'Router Control','rack':'Virtual Rack','patch':'Patch Bay','monitor':'Monitoring','devices':'Device Control','nap':'NAP & Runbook','tools':'Broadcast Tools','security':'Security','tally':'Signal Tallies','fabric':'Fabric & Scale'};
             $el('wsTitle').textContent=titles[mod]||mod;
             try{
                 if(mod==='dashboard') c.innerHTML=await renderDashboard();
@@ -587,17 +636,26 @@
         }
 
         async function renderDashboard(){
-            let stats={};
-            try{ stats=await fetchAPI('/api/v1/stats'); }catch(e){ stats={}; }
+            const results=await Promise.allSettled([
+                fetchAPI('/api/v1/stats'),
+                fetchAPI('/api/v1/routing'),
+                fetchAPI('/api/v1/devices')
+            ]);
+            const stats=results[0].status==='fulfilled'?results[0].value:{};
+            const routers=results[1].status==='fulfilled'?(results[1].value.routers||[]):[];
+            const devices=results[2].status==='fulfilled'?(results[2].value.devices||[]):[];
             const rb=stats.runbooks||{}; const np=stats.naps||{}; const reg=stats.registry||{}; const net=stats.networkProtocols||{};
+            const cluster=stats.cluster||{};
+            const reachable=cluster.reachable===true;
+            setSystemStatus(reachable);
             return `
             <div class="stats-grid">
-                <div class="stat-card"><div class="label">Verification Gates</div><div class="value">12</div><div class="sub">12 pass · 0 partial</div></div>
-                <div class="stat-card"><div class="label">Runbooks</div><div class="value">${rb.total||0}</div><div class="sub">Live: ${rb.phases&&rb.phases.Live||0}</div></div>
-                <div class="stat-card"><div class="label">NAP Applications</div><div class="value">${np.total||0}</div><div class="sub">Validated: ${np.phases&&np.phases.Validated||0}</div></div>
-                <div class="stat-card"><div class="label">NAP Registry</div><div class="value">${reg.total||0}</div><div class="sub">Approved: ${reg.phases&&reg.phases.Approved||0}</div></div>
-                <div class="stat-card"><div class="label">Routers</div><div class="value">2</div><div class="sub">SW-P-08 · Ember+</div></div>
-                <div class="stat-card"><div class="label">Devices</div><div class="value">6</div><div class="sub">All online</div></div>
+                <div class="stat-card"><div class="label">Cluster</div><div class="value" data-stat="cluster">${reachable?'Online':'Offline'}</div><div class="sub">${escapeHtml(cluster.context||'no context')} · ${escapeHtml(cluster.server||'not configured')}</div></div>
+                <div class="stat-card"><div class="label">Runbooks</div><div class="value" data-stat="runbooks">${rb.total||0}</div><div class="sub">Live: ${rb.phases&&rb.phases.Live||0} · Unknown: ${rb.phases&&rb.phases.Unknown||0}</div></div>
+                <div class="stat-card"><div class="label">NAP Applications</div><div class="value" data-stat="naps">${np.total||0}</div><div class="sub">Validated: ${np.phases&&np.phases.Validated||0} · Unknown: ${np.phases&&np.phases.Unknown||0}</div></div>
+                <div class="stat-card"><div class="label">NAP Registry</div><div class="value" data-stat="registry">${reg.total||0}</div><div class="sub">Approved: ${reg.phases&&reg.phases.Approved||0} · Unknown: ${reg.phases&&reg.phases.Unknown||0}</div></div>
+                <div class="stat-card"><div class="label">Routers</div><div class="value" data-stat="routers">${routers.length}</div><div class="sub">${routers.map(r=>escapeHtml(r.type||'—')).join(' · ')||'None discovered'}</div></div>
+                <div class="stat-card"><div class="label">Devices</div><div class="value" data-stat="devices">${devices.length}</div><div class="sub">${devices.length?'From runbook placements':'No placements reported'}</div></div>
             </div>
             <div class="section-header"><div class="section-title"><span class="icon">🌐</span> Network Protocol Health</div></div>
             <div class="stats-grid">
@@ -619,18 +677,28 @@
         }
 
         // ===== Router Module =====
+        window.__routers=[];
+        window.__selectedRouter=null;
         async function renderRouter(){
             let routers=[];
-            try{ const d=await fetchAPI('/api/v1/routing'); routers=d.routers||[]; }catch(e){ showToast('Router load failed: '+e.message,'error'); }
+            try{
+                const d=await fetchAPI('/api/v1/routing');
+                routers=d.routers||[];
+            }catch(e){
+                showToast('Router load failed: '+e.message,'error');
+            }
+            window.__routers=routers;
+            const selected=routers.find(r=>r.id===window.__selectedRouter)||routers[0]||null;
+            if(selected) window.__selectedRouter=selected.id;
             return `
             <div class="router-section">
                 <div class="router-sidebar">
                     <div style="padding:1rem; font-weight:700; font-size:0.85rem; border-bottom:1px solid var(--line); color:var(--accent);">ROUTERS</div>
                     <div style="padding:1rem; overflow-y:auto;">
                         ${routers.map(r=>`
-                            <div style="padding:10px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; background:var(--bg-dark); cursor:pointer;" onclick="selectRouter('${escapeHtml(r.id)}')">
+                            <div class="router-card ${selected&&r.id===selected.id?'selected':''}" data-router="${escapeHtml(r.id)}" onclick="selectRouter('${escapeHtml(r.id)}')">
                                 <div style="font-weight:700; color:var(--text-primary);">${escapeHtml(r.name||'Router')}</div>
-                                <div style="font-size:0.7rem; color:var(--text-muted);">${escapeHtml(r.type||'—')} · ${escapeHtml(r.status||'—')}</div>
+                                <div style="font-size:0.7rem; color:var(--text-muted);">${escapeHtml(r.type||'—')} · <span class="badge ${r.status==='online'?'online':'offline'}">${escapeHtml(r.status||'—')}</span></div>
                                 <div style="font-size:0.7rem; color:var(--text-secondary); margin-top:4px;">${r.inputs||0} In × ${r.outputs||0} Out · ${r.crosspoints||0} XPs</div>
                             </div>
                         `).join('')||'<div style="color:var(--text-muted); font-size:0.85rem;">No routers</div>'}
@@ -638,16 +706,17 @@
                 </div>
                 <div class="router-main">
                     <div class="router-controls">
-                        <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Router Grid — Click cell to take route</span>
-                        <div style="margin-left:auto; display:flex; gap:6px;">
-                            <span class="badge" style="background:var(--router-free)">Free</span>
-                            <span class="badge" style="background:var(--router-active)">Active</span>
-                            <span class="badge" style="background:var(--router-locked)">Locked</span>
-                            <span class="badge" style="background:var(--router-protect)">Protect</span>
+                        <span id="routerGridLabel" style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">${selected?escapeHtml(selected.name):'No router selected'} — click a crosspoint to take</span>
+                        <div style="margin-left:auto; display:flex; gap:6px; align-items:center;">
+                            <span class="badge" style="background:var(--router-free);color:var(--text-secondary)">Free</span>
+                            <span class="badge" style="background:var(--router-active);color:#0a1218">Active</span>
+                            <span class="badge" style="background:var(--router-locked);color:#fff">Locked</span>
+                            <span class="badge" style="background:var(--router-protect);color:#0a1218">Protect</span>
+                            <button onclick="clearSelectedRoute()" style="margin-left:8px;">Clear selected</button>
                         </div>
                     </div>
-                    <div class="router-grid-wrap" id="routerGrid">
-                        ${renderRouterGrid(routers[0]||{inputs:8,outputs:8,name:'Default'})}
+                    <div class="router-grid-wrap" id="routerGrid" style="grid-template-columns:110px repeat(${selected?selected.outputs||8:8},minmax(52px,1fr));">
+                        ${selected?renderRouterGrid(selected):'<div class="empty-state">No routers discovered</div>'}
                     </div>
                 </div>
             </div>
@@ -655,25 +724,71 @@
         }
         function renderRouterGrid(r){
             const ins=r.inputs||8; const outs=r.outputs||8;
+            const routeMap={};
+            (r.routes||[]).forEach(route=>{ routeMap[route.output]=route; });
             let html='';
-            // header row (destinations)
-            html+='<div style="width:100px;height:100px;"></div>';
-            for(let j=0;j<outs;j++) html+='<div style="height:100px; display:flex; align-items:center; justify-content:center; font-size:0.6rem; color:var(--text-muted); writing-mode:vertical-rl; font-weight:700;">'+escapeHtml('OUT '+(j+1))+'</div>';
-            // rows
-            for(let i=0;i<ins;i++){
-                html+='<div style="width:100px; display:flex; align-items:center; justify-content:center; font-size:0.6rem; color:var(--text-muted); font-weight:700;">'+escapeHtml('IN '+(i+1))+'</div>';
-                for(let j=0;j<outs;j++){
-                    const state = Math.random()<0.15?'active': Math.random()<0.05?'locked': Math.random()<0.05?'protect':'free';
-                    html+='<div class="router-cell '+state+'" onclick="takeRoute(\''+escapeHtml(r.id)+'\','+i+','+j+')"><div class="lbl">XP</div></div>';
+            html+='<div class="router-corner">OUT →<br>IN ↓</div>';
+            for(let j=1;j<=outs;j++){
+                html+='<div class="router-col-label"><span>OUT '+j+'</span></div>';
+            }
+            for(let i=1;i<=ins;i++){
+                html+='<div class="router-row-label">IN '+i+'</div>';
+                for(let j=1;j<=outs;j++){
+                    const route=routeMap[j];
+                    let state='free'; let label='';
+                    if(route && route.input===i){
+                        state=route.state==='protected'?'protect':route.state==='locked'?'locked':'active';
+                        label=String(route.input);
+                    }
+                    html+='<div class="router-cell '+state+'" data-in="'+i+'" data-out="'+j+'" onclick="takeRoute(this)" title="IN '+i+' → OUT '+j+'"><span class="xp">'+label+'</span></div>';
                 }
             }
             return html;
         }
-        window.takeRoute=function(routerId,inIdx,outIdx){
-            showToast('Route take queued: '+routerId+' IN'+(inIdx+1)+' → OUT'+(outIdx+1),'info');
-            // TODO: POST /api/v1/router/take
+        window.selectRouter=function(id){
+            window.__selectedRouter=id;
+            const r=(window.__routers||[]).find(x=>x.id===id);
+            if(!r) return;
+            document.querySelectorAll('.router-card').forEach(c=>c.classList.toggle('selected',c.dataset.router===id));
+            const grid=$el('routerGrid');
+            grid.style.gridTemplateColumns='110px repeat('+(r.outputs||8)+',minmax(52px,1fr))';
+            grid.innerHTML=renderRouterGrid(r);
+            $el('routerGridLabel').textContent=(r.name||id)+' — click a crosspoint to take';
         };
-        window.selectRouter=function(id){ showToast('Router selected: '+id,'info'); };
+        window.takeRoute=function(cell){
+            const routerId=window.__selectedRouter;
+            if(!routerId){ showToast('Select a router first','warn'); return; }
+            if(cell.classList.contains('locked')||cell.classList.contains('protect')){
+                showToast('Destination is locked or protected','warn');
+                return;
+            }
+            const input=parseInt(cell.dataset.in,10);
+            const output=parseInt(cell.dataset.out,10);
+            fetchAPI('/api/v1/routing/take',{method:'POST',body:JSON.stringify({routerID:routerId,input:input,output:output})})
+                .then(()=>{
+                    showToast('Take: '+routerId+' IN'+input+' → OUT'+output,'success');
+                    const r=(window.__routers||[]).find(x=>x.id===routerId);
+                    if(r){
+                        r.routes=(r.routes||[]).filter(x=>x.output!==output);
+                        r.routes.push({output:output,input:input,state:'active'});
+                        selectRouter(routerId);
+                    }
+                })
+                .catch(e=>showToast('Take failed: '+e.message,'error'));
+        };
+        window.clearSelectedRoute=function(){
+            const routerId=window.__selectedRouter;
+            if(!routerId){ showToast('Select a router first','warn'); return; }
+            const output=prompt('Output number to clear:','1');
+            if(output===null) return;
+            fetchAPI('/api/v1/routing/clear',{method:'POST',body:JSON.stringify({routerID:routerId,output:parseInt(output,10)||1})})
+                .then(()=>{
+                    showToast('Output '+output+' cleared','success');
+                    const r=(window.__routers||[]).find(x=>x.id===routerId);
+                    if(r){ r.routes=(r.routes||[]).filter(x=>x.output!==parseInt(output,10)); selectRouter(routerId); }
+                })
+                .catch(e=>showToast('Clear failed: '+e.message,'error'));
+        };
 
         // ===== Rack Module =====
         async function renderRack(){
@@ -684,7 +799,7 @@
                         <div class="rack-rail left"></div><div class="rack-rail right"></div>
                         ${renderRackSlots()}
                     </div>
-                    <div class="rack-empty" id="rackEmpty" style="margin-top:2rem;">Drag equipment here (coming soon: drag & drop equipment from library)</div>
+                    <div class="rack-empty" id="rackEmpty" style="margin-top:2rem;">42U equipment rack · select a slot to add or toggle virtual equipment</div>
                 </div>
             </div>
             `;
@@ -698,19 +813,20 @@
                 {id:'e5',name:'NAP Vision Mixer',type:'nap',u:1,status:'validated'},
                 {id:'e6',name:'SRT Encoder',type:'encoder',u:1,status:'online'},
             ];
+            const totalU=42;
             let html='';
-            let usedU=0;
-            for(let i=0;i<42;i++){
-                const eq=equip.find(e=>usedU===i && e.u);
-                if(eq){
-                    html+='<div class="rack-slot occupied" style="grid-row: span '+eq.u+';" onclick="toggleEquip(\''+eq.id+'\')">';
-                    html+='<div class="rack-equip"><div class="eq-name">'+escapeHtml(eq.name)+'</div><div style="font-size:0.65rem; color:var(--text-muted);">'+escapeHtml(eq.type)+'</div><div class="eq-status"><span class="badge '+ (eq.status==='online'?'online':eq.status==='validated'?'online':'pending') +'">'+escapeHtml(eq.status)+'</span></div></div>';
-                    html+='</div>';
-                    i+=eq.u-1; usedU+=eq.u;
-                }else{
-                    html+='<div class="rack-slot" style="grid-row: span 1;" onclick="addEquipHere('+i+')">'+(i+1)+'U</div>';
-                    usedU++;
-                }
+            let used=0;
+            equip.forEach(eq=>{
+                const span=Math.min(eq.u||1,totalU-used);
+                if(span<=0) return;
+                const height='calc('+span+' * var(--rack-unit-h) + '+(span-1)+' * 4px)';
+                html+='<div class="rack-slot occupied" style="height:'+height+';" onclick="toggleEquip(\''+eq.id+'\')">';
+                html+='<div class="rack-equip"><div class="eq-name">'+escapeHtml(eq.name)+'</div><div style="font-size:0.65rem; color:var(--text-muted);">'+escapeHtml(eq.type)+' · '+span+'U</div><div class="eq-status"><span class="badge '+(eq.status==='validated'?'degraded':'online')+'">'+escapeHtml(eq.status)+'</span></div></div>';
+                html+='</div>';
+                used+=span;
+            });
+            for(let u=used;u<totalU;u++){
+                html+='<div class="rack-slot" style="height:var(--rack-unit-h);" onclick="addEquipHere('+(u+1)+')">'+(u+1)+'U</div>';
             }
             return html;
         }
@@ -729,7 +845,7 @@
                 <div class="patch-panel">
                     <div class="patch-panel-header"><span>Sources</span><span class="badge">${sources.length}</span></div>
                     <div class="patch-list" id="patchSources">
-                        ${sources.map(s=>`<div class="patch-item" onclick="selectPatchSource('${escapeHtml(s.id)}')"><div class="dot"></div><div class="name">${escapeHtml(s.name||'Source')}</div><div class="type">${escapeHtml(s.type||'—')}</div></div>`).join('')||'<div class="empty-state" style="padding:1rem;">No sources</div>'}
+                        ${sources.map(s=>`<div class="patch-item" onclick="selectPatchSource('${escapeHtml(s.id)}',this)"><div class="dot"></div><div class="name">${escapeHtml(s.name||'Source')}</div><div class="type">${escapeHtml(s.type||'—')}</div></div>`).join('')||'<div class="empty-state" style="padding:1rem;">No sources</div>'}
                     </div>
                     <div class="patch-actions">
                         <button onclick="clearPatch()">Clear Selection</button>
@@ -739,7 +855,7 @@
                 <div class="patch-panel" style="margin-left:0;">
                     <div class="patch-panel-header"><span>Destinations</span><span class="badge">${dests.length}</span></div>
                     <div class="patch-list" id="patchDests">
-                        ${dests.map(d=>`<div class="patch-item" onclick="selectPatchDest('${escapeHtml(d.id)}')"><div class="dot"></div><div class="name">${escapeHtml(d.name||'Destination')}</div><div class="type">${escapeHtml(d.type||'—')}</div></div>`).join('')||'<div class="empty-state" style="padding:1rem;">No destinations</div>'}
+                        ${dests.map(d=>`<div class="patch-item" onclick="selectPatchDest('${escapeHtml(d.id)}',this)"><div class="dot"></div><div class="name">${escapeHtml(d.name||'Destination')}</div><div class="type">${escapeHtml(d.type||'—')}</div></div>`).join('')||'<div class="empty-state" style="padding:1rem;">No destinations</div>'}
                     </div>
                     <div class="patch-actions">
                         <button class="danger" onclick="clearPatch()">Disconnect</button>
@@ -751,12 +867,17 @@
             `;
         }
         let patchSrc=null,patchDst=null;
-        window.selectPatchSource=function(id){ patchSrc=id; document.querySelectorAll('#patchSources .patch-item').forEach(x=>x.classList.remove('selected')); event.currentTarget.classList.add('selected'); showToast('Source selected','info'); };
-        window.selectPatchDest=function(id){ patchDst=id; document.querySelectorAll('#patchDests .patch-item').forEach(x=>x.classList.remove('selected')); event.currentTarget.classList.add('selected'); showToast('Destination selected','info'); };
+        window.selectPatchSource=function(id,el){ patchSrc=id; document.querySelectorAll('#patchSources .patch-item').forEach(x=>x.classList.remove('selected')); if(el) el.classList.add('selected'); showToast('Source selected: '+id,'info'); };
+        window.selectPatchDest=function(id,el){ patchDst=id; document.querySelectorAll('#patchDests .patch-item').forEach(x=>x.classList.remove('selected')); if(el) el.classList.add('selected'); showToast('Destination selected: '+id,'info'); };
         window.createPatch=function(){
             if(!patchSrc||!patchDst){ showToast('Select source and destination','warn'); return; }
-            showToast('Patch '+patchSrc+' → '+patchDst+' created','success');
-            patchSrc=null; patchDst=null;
+            fetchAPI('/api/v1/patch/connect',{method:'POST',body:JSON.stringify({sourceID:patchSrc,destinationID:patchDst,transport:'UDP'})})
+                .then(()=>{
+                    showToast('Patch '+patchSrc+' → '+patchDst+' created','success');
+                    patchSrc=null; patchDst=null;
+                    renderModule('patch');
+                })
+                .catch(e=>showToast('Patch failed: '+e.message,'error'));
         };
         window.clearPatch=function(){ patchSrc=null; patchDst=null; document.querySelectorAll('.patch-item.selected').forEach(x=>x.classList.remove('selected')); showToast('Selection cleared','info'); };
 
@@ -811,9 +932,9 @@
                 devices=[
                     {id:'cam1',name:'Camera 1',type:'camera',status:'online'},
                     {id:'cam2',name:'Camera 2',type:'camera',status:'online'},
-                    {id:'aud1',name='Audio Console',type:'audio',status:'online'},
-                    {id:'rep1',name='Replay Server',type:'replay',status:'online'},
-                    {id:'gfx1',name='Graphics Engine',type:'graphics',status:'online'},
+                    {id:'aud1',name:'Audio Console',type:'audio',status:'online'},
+                    {id:'rep1',name:'Replay Server',type:'replay',status:'online'},
+                    {id:'gfx1',name:'Graphics Engine',type:'graphics',status:'online'},
                     {id:'cere1',name:'EVS Cerebrum',type:'cerebrum',status:'online'}
                 ];
             }
@@ -1109,18 +1230,37 @@
         });
 
         // ===== SSE Connection with reconnection =====
+        let sseToastShown=false;
+        function setSystemStatus(reachable){
+            const dot=$el('sysDot'); const text=$el('sysText');
+            if(!dot||!text) return;
+            dot.className='sys-dot'+(reachable?'':' down');
+            text.textContent=reachable?'System Healthy':'Cluster Unreachable';
+        }
+        function updateDashboardLive(d){
+            const set=(key,value)=>{ document.querySelectorAll('[data-stat="'+key+'"]').forEach(el=>{ el.textContent=value; }); };
+            if(d.runbooks){ set('runbooks',d.runbooks.total||0); }
+            if(d.naps){ set('naps',d.naps.total||0); }
+            if(d.registry){ set('registry',d.registry.total||0); }
+            set('cluster',d.reachable===true?'Online':'Offline');
+            setSystemStatus(d.reachable===true);
+            const alarms=$el('alarmCount');
+            if(alarms){
+                const degraded=(d.runbooks&&d.runbooks.phases&&d.runbooks.phases.Degraded||0)+(d.naps&&d.naps.phases&&d.naps.phases.Rejected||0);
+                alarms.textContent=String(degraded);
+            }
+        }
         function connectSSE(){
             if(sse){ try{sse.close();}catch(e){} sse=null; }
             if(pollTimer){ clearInterval(pollTimer); pollTimer=null; }
 
             var sseTimeout = setTimeout(function(){
                 // SSE never opened within 5s - fall back to polling
-                $el('sseDot').className='sse-dot';
-                $el('sseDot').style.backgroundColor='var(--warn)';
+                $el('sseDot').className='sse-dot warn';
                 $el('sseText').textContent='Polling (SSE unavailable)';
                 if(!pollTimer){
                     pollTimer=setInterval(()=>{ renderModule(currentModule); },15000);
-                    showToast('SSE unavailable - polling fallback','error');
+                    if(!sseToastShown){ showToast('SSE unavailable - polling fallback','warn'); sseToastShown=true; }
                 }
             }, 5000);
 
@@ -1130,20 +1270,24 @@
                 reconnectDelay=1000;
                 $el('sseDot').className='sse-dot live';
                 $el('sseText').textContent='Live';
-                showToast('Real-time connection established','success');
+                if(!sseToastShown){ showToast('Real-time connection established','success'); sseToastShown=true; }
             };
             sse.onmessage=(ev)=>{
-                try{ const d=JSON.parse(ev.data); if(d.event==='stats'){ /* stats update handled by dashboard poll */ } }catch(e){}
+                try{
+                    const d=JSON.parse(ev.data);
+                    if(d.event==='stats'){
+                        window.__lastStats=d;
+                        updateDashboardLive(d);
+                    }
+                }catch(e){}
             };
             sse.onerror=()=>{
                 clearTimeout(sseTimeout);
-                $el('sseDot').className='sse-dot';
-                $el('sseDot').style.backgroundColor='var(--fail)';
+                $el('sseDot').className='sse-dot fail';
                 $el('sseText').textContent='Reconnecting…';
                 try{sse.close();}catch(e){} sse=null;
                 if(!pollTimer){
                     pollTimer=setInterval(()=>{ renderModule(currentModule); },15000);
-                    showToast('Real-time connection lost - polling fallback','error');
                 }
                 setTimeout(()=>{ connectSSE(); },reconnectDelay);
                 reconnectDelay=Math.min(reconnectDelay*2,30000);

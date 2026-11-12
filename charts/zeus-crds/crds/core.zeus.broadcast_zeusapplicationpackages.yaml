@@ -85,8 +85,43 @@ spec:
                     type: boolean
                   is10:
                     type: boolean
+                  essence:
+                    description: Essence is the NMOS essence parameter (for example "raw").
+                    type: string
+                  mediaType:
+                    description: MediaType is the NMOS media type (for example "video/raw").
+                    type: string
+                  sampling:
+                    description: Sampling is the NMOS sampling parameter (for example
+                      "YCbCr:4:2:2:10bit").
+                    type: string
+                  senderMatch:
+                    description: SenderMatch requires IS-04 sender discovery before
+                      the NAP can be validated.
+                    type: boolean
                   transport:
                     type: string
+                type: object
+              routing:
+                description: RoutingConfig specifies how a NAP is routed through a
+                  routing router.
+                properties:
+                  destinationID:
+                    description: DestinationID is the destination crosspoint ID on
+                      the router.
+                    type: string
+                  provider:
+                    description: Provider is the routing protocol provider (tcp, swp08,
+                      emberplus).
+                    type: string
+                  routerRef:
+                    description: RouterRef is a reference to the routing router.
+                    type: string
+                  sourceID:
+                    description: SourceID is the source crosspoint ID on the router.
+                    type: string
+                required:
+                - provider
                 type: object
             required:
             - crm

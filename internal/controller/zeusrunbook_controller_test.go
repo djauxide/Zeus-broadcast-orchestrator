@@ -64,12 +64,12 @@ func testNAP(name, phase string, observedGen int64) *zeusv1.ZeusApplicationPacka
 	}
 }
 
-func testPod(app string) *corev1.Pod {
+func testPod(runbook, app string) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      app + "-pod",
 			Namespace: "default",
-			Labels:    map[string]string{"app": app},
+			Labels:    map[string]string{"app": app, runbookLabel: runbook},
 		},
 		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "media", Image: "example.invalid/mixer:1"}}},
 	}
@@ -107,7 +107,7 @@ func request(name string) reconcile.Request {
 
 func TestReconcileReachesLiveAndBindsReceiver(t *testing.T) {
 	rb := testRunbook("show", "mixer")
-	r, fab := newReconciler(t, rb, testNAP("mixer", "Validated", 1), testPod("show-mixer"))
+	r, fab := newReconciler(t, rb, testNAP("mixer", "Validated", 1), testPod("show", "show-mixer"))
 
 	out, err := reconcileRunbook(t, r, "show")
 	if err != nil {
@@ -116,11 +116,11 @@ func TestReconcileReachesLiveAndBindsReceiver(t *testing.T) {
 	if out.Status.Phase != "Live" {
 		t.Fatalf("phase = %q, want Live (reason %q)", out.Status.Phase, out.Status.Conditions[0].Reason)
 	}
-	if _, ok := fab.Get("default", "show-mixer"); !ok {
+	if _, ok := fab.Get("default", "show-show-mixer"); !ok {
 		t.Fatal("receiver was not ensured")
 	}
 	var dep appsv1.Deployment
-	if err := r.Get(context.Background(), types.NamespacedName{Namespace: "default", Name: "show-mixer"}, &dep); err != nil {
+	if err := r.Get(context.Background(), types.NamespacedName{Namespace: "default", Name: "show-show-mixer"}, &dep); err != nil {
 		t.Fatalf("deployment missing: %v", err)
 	}
 }
@@ -139,7 +139,7 @@ func TestReconcileWaitsForValidatedNAP(t *testing.T) {
 	if out.Status.Conditions[0].Reason != "NAPNotValidated" {
 		t.Fatalf("reason = %q, want NAPNotValidated", out.Status.Conditions[0].Reason)
 	}
-	if _, ok := fab.Get("default", "show-mixer"); ok {
+	if _, ok := fab.Get("default", "show-show-mixer"); ok {
 		t.Fatal("receiver must not be created before the NAP is validated")
 	}
 }
@@ -161,20 +161,20 @@ func TestTeardownRemovesFabricAndDeployment(t *testing.T) {
 	rb := testRunbook("show", "mixer")
 	rb.Finalizers = []string{zeusFinalizer}
 	rb.DeletionTimestamp = &metav1.Time{Time: time.Now()}
-	r, fab := newReconciler(t, rb, testNAP("mixer", "Validated", 1), testPod("show-mixer"))
+	r, fab := newReconciler(t, rb, testNAP("mixer", "Validated", 1), testPod("show", "show-mixer"))
 
-	if err := fab.EnsureReceiver(context.Background(), "default", "show-mixer", "flow", "pod", "tcp", nil); err != nil {
+	if err := fab.EnsureReceiver(context.Background(), "default", "show-show-mixer", "flow", "pod", "tcp", nil); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
 	if _, err := r.Reconcile(ctx, request("show")); err != nil {
 		t.Fatalf("reconcile delete: %v", err)
 	}
-	if _, ok := fab.Get("default", "show-mixer"); ok {
+	if _, ok := fab.Get("default", "show-show-mixer"); ok {
 		t.Fatal("receiver was not deleted")
 	}
 	var dep appsv1.Deployment
-	err := r.Get(ctx, types.NamespacedName{Namespace: "default", Name: "show-mixer"}, &dep)
+	err := r.Get(ctx, types.NamespacedName{Namespace: "default", Name: "show-show-mixer"}, &dep)
 	if err == nil {
 		t.Fatal("deployment still present after teardown")
 	}
@@ -187,7 +187,7 @@ func TestTeardownRemovesFabricAndDeployment(t *testing.T) {
 
 // fakeBridge implements srt.Bridge with configurable health results for tests.
 type fakeBridge struct {
-	ph zeusv1.PathHealth
+	ph  zeusv1.PathHealth
 	err error
 }
 
@@ -237,7 +237,7 @@ func TestReconcileWritesPathHealth(t *testing.T) {
 	rb.Spec.NAPs = []zeusv1.NAPPlacement{{Name: "show-mixer", NAP: "mixer"}}
 
 	b := &fakeBridge{ph: zeusv1.PathHealth{Name: "primary", Transport: "srt", State: "up", RTTMs: 42}}
-	r := newReconcilerWithBridge(t, b, rb, testNAP("mixer", "Validated", 1), testPod("show-mixer"), testSecret("srt-pass"))
+	r := newReconcilerWithBridge(t, b, rb, testNAP("mixer", "Validated", 1), testPod("show", "show-mixer"), testSecret("srt-pass"))
 
 	out, err := reconcileRunbook(t, r, "show")
 	if err != nil {
@@ -265,7 +265,7 @@ func TestReconcileDegradesOnPathDown(t *testing.T) {
 	rb.Spec.NAPs = []zeusv1.NAPPlacement{{Name: "show-mixer", NAP: "mixer"}}
 
 	b := &fakeBridge{ph: zeusv1.PathHealth{Name: "primary", Transport: "srt", State: "down"}, err: errConnectionRefused}
-	r := newReconcilerWithBridge(t, b, rb, testNAP("mixer", "Validated", 1), testPod("show-mixer"), testSecret("srt-pass"))
+	r := newReconcilerWithBridge(t, b, rb, testNAP("mixer", "Validated", 1), testPod("show", "show-mixer"), testSecret("srt-pass"))
 
 	out, err := reconcileRunbook(t, r, "show")
 	if err != nil {
@@ -289,4 +289,3 @@ func testSecret(name string) *corev1.Secret {
 		Data:       map[string][]byte{"passphrase": []byte("this-is-a-test-passphrase-20-chars")},
 	}
 }
-

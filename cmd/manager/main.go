@@ -14,13 +14,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	zeusv1 "github.com/zeus-broadcast/zeus-kernel/api/v1alpha1"
-	"github.com/zeus-broadcast/zeus-kernel/internal/controller"
 	"github.com/zeus-broadcast/zeus-kernel/internal/control"
 	"github.com/zeus-broadcast/zeus-kernel/internal/control/emberplus"
 	"github.com/zeus-broadcast/zeus-kernel/internal/control/swp08"
+	"github.com/zeus-broadcast/zeus-kernel/internal/controller"
 	"github.com/zeus-broadcast/zeus-kernel/internal/fabric"
 	"github.com/zeus-broadcast/zeus-kernel/internal/nmos"
 	"github.com/zeus-broadcast/zeus-kernel/internal/transport/hitless"
@@ -40,10 +39,12 @@ func init() {
 func main() {
 	var metricsAddr, probeAddr string
 	var enableLeaderElection bool
+	var enableWebhook bool
 	var nmosRegistryURL, nmosTokenURL, nmosClientID, nmosClientSecret string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false, "")
+	flag.BoolVar(&enableWebhook, "enable-webhook", true, "enable the validating admission webhook")
 	flag.StringVar(&nmosRegistryURL, "nmos-registry-url", "", "NMOS IS-04 registry base URL (e.g. http://nmos-registry.nmos-system.svc.cluster.local)")
 	flag.StringVar(&nmosTokenURL, "nmos-token-url", "", "OAuth2 token endpoint for IS-10 authorization")
 	flag.StringVar(&nmosClientID, "nmos-client-id", "", "OAuth2 client ID")
@@ -58,7 +59,6 @@ func main() {
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "zeus.broadcast",
-		WebhookServer:          webhook.NewServer(webhook.Options{Port: 9443}),
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -94,19 +94,11 @@ func main() {
 
 	if err := (&controller.ZeusRunbookReconciler{
 		Client: mgr.GetClient(), Scheme: mgr.GetScheme(),
-		Fabric: fabric.NewRealClient(mgr.GetClient()),
+		Fabric:        fabric.NewRealClient(mgr.GetClient()),
 		BridgeFactory: srt.NewBridge,
 		HitlessMerger: hitless.NewMerger(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create Runbook controller")
-		os.Exit(1)
-	}
-
-	if err := (&controller.ZeusApplicationPackageReconciler{
-		Client: mgr.GetClient(), Scheme: mgr.GetScheme(),
-		NMOS: nmosClient,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create NAP controller")
 		os.Exit(1)
 	}
 
@@ -124,9 +116,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := (&zeusv1.ZeusRunbook{}).SetupWebhookWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create webhook")
-		os.Exit(1)
+	if enableWebhook {
+		if err := (&zeusv1.ZeusRunbook{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook")
+			os.Exit(1)
+		}
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

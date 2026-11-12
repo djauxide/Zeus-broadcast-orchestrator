@@ -2,6 +2,10 @@
 ui_proxy.log
 ui_proxy.err
 
+# Python
+__pycache__/
+*.pyc
+
 # OS
 .DS_Store
 Thumbs.db

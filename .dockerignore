@@ -3,3 +3,9 @@ cover.out
 *.swp
 .env
 charts/zeus-crds/crds
+_check.js
+_render.yaml
+ui_proxy.log
+ui_proxy.err
+__pycache__
+*.pyc

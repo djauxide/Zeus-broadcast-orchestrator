@@ -11,10 +11,14 @@ metadata:
   name: zeus-kernel
 rules:
   - apiGroups: ["core.zeus.broadcast"]
-    resources: ["zeusrunbooks", "zeusapplicationpackages"]
+    resources: ["zeusrunbooks", "zeusapplicationpackages", "napregistries", "runbooktemplates"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["core.zeus.broadcast"]
-    resources: ["zeusrunbooks/status", "zeusapplicationpackages/status"]
+    resources:
+      - zeusrunbooks/status
+      - zeusapplicationpackages/status
+      - napregistries/status
+      - runbooktemplates/status
     verbs: ["get", "update", "patch"]
   - apiGroups: ["mxl.qvest-digital.com"]
     resources: ["mxlreceivers", "mxlflows", "mxldomains", "mxlflowmirrors", "mxlnodecapabilities"]

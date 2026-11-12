@@ -1,0 +1,33 @@
+services:
+  zeus-ui-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui-proxy
+    image: zeus-ui-proxy:local
+    ports:
+      - "8082:8082"
+    volumes:
+      # Read-only kubeconfig. The proxy rewrites 127.0.0.1/localhost to
+      # host.docker.internal so it can reach a kind API server published on
+      # the host loopback interface.
+      - ~/.kube/config:/home/zeus/.kube/config:ro
+    environment:
+      KUBECONFIG: /home/zeus/.kube/config
+      KUBE_REWRITE_LOOPBACK: "1"
+      KUBE_LOOPBACK_HOST: host.docker.internal
+      PROXY_PORT: "8082"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8082/api/v1/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - zeus-network
+
+networks:
+  zeus-network:
+    driver: bridge
