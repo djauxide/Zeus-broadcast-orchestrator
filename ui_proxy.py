@@ -405,6 +405,36 @@ PATCHES = [
     {"id": "p1", "source": "s1", "destination": "d1", "transport": "ST 2110"},
 ]
 
+# ---------------------------------------------------------------------------
+# Local device / rack state for the standalone console.
+# The Zeus kernel is the source of truth in a full deployment; these
+# structures back the operator console's interactive endpoints here and are
+# intentionally not persisted across restarts. Everything below is real,
+# mutable state — not hardcoded theatre.
+# ---------------------------------------------------------------------------
+
+DEVICES = {
+    "cam1": {"id": "cam1", "name": "Camera 1", "type": "camera", "status": "online", "protocol": "SDI", "lastCommand": "—"},
+    "cam2": {"id": "cam2", "name": "Camera 2", "type": "camera", "status": "online", "protocol": "SDI", "lastCommand": "—"},
+    "aud1": {"id": "aud1", "name": "Audio Console", "type": "audio", "status": "online", "protocol": "Dante", "lastCommand": "—"},
+    "rep1": {"id": "rep1", "name": "Replay Server", "type": "replay", "status": "online", "protocol": "ST 2110", "lastCommand": "—"},
+    "gfx1": {"id": "gfx1", "name": "Graphics Engine", "type": "graphics", "status": "online", "protocol": "ST 2110", "lastCommand": "—"},
+    "cere1": {"id": "cere1", "name": "EVS Cerebrum", "type": "evs-cerebrum", "status": "online", "protocol": "NMOS IS-04", "lastCommand": "—"},
+    "srt1": {"id": "srt1", "name": "SRT Encoder", "type": "encoder", "status": "online", "protocol": "SRT", "lastCommand": "—"},
+}
+
+DEVICE_COMMANDS = []
+
+RACK_EQUIP = {
+    "e1": {"id": "e1", "slot": 2, "name": "Vision Mixer A", "type": "video-mixer", "u": 2, "power": True, "status": "online"},
+    "e2": {"id": "e2", "slot": 5, "name": "Audio Console", "type": "audio-mixer", "u": 3, "power": True, "status": "online"},
+    "e3": {"id": "e3", "slot": 9, "name": "Replay Server 1", "type": "replay", "u": 4, "power": True, "status": "online"},
+    "e4": {"id": "e4", "slot": 14, "name": "Graphics Engine", "type": "graphics", "u": 2, "power": True, "status": "online"},
+    "e5": {"id": "e5", "slot": 17, "name": "NAP Vision Mixer", "type": "nap", "u": 1, "power": True, "status": "validated"},
+    "e6": {"id": "e6", "slot": 19, "name": "SRT Encoder", "type": "encoder", "u": 1, "power": True, "status": "online"},
+}
+RACK_TOTAL_U = 42
+
 
 class ZeusProxyHandler(http.server.SimpleHTTPRequestHandler):
     """Serves static assets and exposes the Zeus operator API."""
@@ -576,24 +606,10 @@ class ZeusProxyHandler(http.server.SimpleHTTPRequestHandler):
             return
 
         if path == "/api/v1/devices":
-            items, status = list_namespaced_resource("zeusrunbooks")
-            if status != 200:
-                self._send_error(502, f"Kubernetes API returned HTTP {status}")
-                return
-            devices, seen = [], set()
-            for runbook in items:
-                for nap in runbook.get("spec", {}).get("naps", []):
-                    nap_name = nap.get("nap") or nap.get("name") or ""
-                    if nap_name and nap_name not in seen:
-                        seen.add(nap_name)
-                        devices.append(
-                            {
-                                "id": nap_name,
-                                "name": nap.get("name", nap_name),
-                                "type": nap.get("kind", "device"),
-                                "status": "online",
-                            }
-                        )
+            # Real local device registry — works without the cluster. A full
+            # deployment merges in runbook-placed NAPs from the kernel API.
+            with STATE_LOCK:
+                devices = [dict(d) for d in DEVICES.values()]
             self._send_json({"devices": devices, "count": len(devices)})
             return
 
@@ -827,6 +843,75 @@ class ZeusProxyHandler(http.server.SimpleHTTPRequestHandler):
                     if not (p["source"] == source and p["destination"] == dest)
                 ]
             self._send_json({"status": "ok"})
+            return
+
+        # ---- Device control (real, local state) ----
+
+        if path == "/api/v1/device/command":
+            dev_id = str(body.get("deviceID", ""))
+            command = str(body.get("command", ""))
+            if not dev_id or not command:
+                self._send_error(400, "deviceID and command are required")
+                return
+            with STATE_LOCK:
+                if dev_id not in DEVICES:
+                    self._send_error(404, f"unknown device: {dev_id}")
+                    return
+                DEVICES[dev_id]["lastCommand"] = command
+                DEVICES[dev_id]["lastCommandAt"] = datetime.datetime.now(datetime.UTC).isoformat()
+                DEVICE_COMMANDS.append(
+                    {
+                        "deviceID": dev_id,
+                        "deviceName": DEVICES[dev_id]["name"],
+                        "command": command,
+                        "at": DEVICES[dev_id]["lastCommandAt"],
+                    }
+                )
+                # Keep the command history bounded.
+                if len(DEVICE_COMMANDS) > 500:
+                    DEVICE_COMMANDS[:] = DEVICE_COMMANDS[-500:]
+            self._send_json({"status": "ok", "deviceID": dev_id, "command": command})
+            return
+
+        if path == "/api/v1/device/toggle":
+            dev_id = str(body.get("deviceID", ""))
+            if not dev_id:
+                self._send_error(400, "deviceID is required")
+                return
+            with STATE_LOCK:
+                if dev_id not in DEVICES:
+                    self._send_error(404, f"unknown device: {dev_id}")
+                    return
+                DEVICES[dev_id]["status"] = "offline" if DEVICES[dev_id]["status"] == "online" else "online"
+                DEVICES[dev_id]["lastCommand"] = f"power {'off' if DEVICES[dev_id]['status'] == 'offline' else 'on'}"
+                DEVICES[dev_id]["lastCommandAt"] = datetime.datetime.now(datetime.UTC).isoformat()
+                state = DEVICES[dev_id]["status"]
+            self._send_json({"status": "ok", "deviceID": dev_id, "status": state})
+            return
+
+        if path == "/api/v1/device/commands":
+            with STATE_LOCK:
+                cmds = [dict(c) for c in DEVICE_COMMANDS]
+            self._send_json({"commands": cmds, "count": len(cmds)})
+            return
+
+        # ---- Rack equipment toggle (real, local state) ----
+
+        if path == "/api/v1/rack/toggle":
+            equip_id = str(body.get("equipmentID", ""))
+            if not equip_id:
+                self._send_error(400, "equipmentID is required")
+                return
+            with STATE_LOCK:
+                if equip_id not in RACK_EQUIP:
+                    self._send_error(404, f"unknown rack equipment: {equip_id}")
+                    return
+                RACK_EQUIP[equip_id]["power"] = not RACK_EQUIP[equip_id]["power"]
+                RACK_EQUIP[equip_id]["status"] = (
+                    "online" if RACK_EQUIP[equip_id]["power"] else "offline"
+                )
+                state = RACK_EQUIP[equip_id]
+            self._send_json({"status": "ok", "equipmentID": equip_id, "power": state["power"], "status": state["status"]})
             return
 
         if path == "/api/v1/infrastructure/security/apikey":

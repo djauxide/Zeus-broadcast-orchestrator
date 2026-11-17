@@ -217,6 +217,7 @@ local kind cluster unless it is explicitly listed under **Not verified**.
 | Operator proxy SSE | `retry: 5000` and 5 s `{"event":"stats",…}` frames observed; `reachable: true` delivered |
 | Operator proxy without a cluster | with the API server down the console still serves the SPA (`200`, 84 KB) and reports honestly: `/api/v1/health` → `200 {"status":"degraded","cluster":{"reachable":false}}`, `/api/v1/stats` → `502` with a per-resource error map, `/api/v1/zeusrunbooks` → `502 {"error":"Kubernetes API returned HTTP 502 …"}` |
 | Operator console renders | loaded in the in-app Chromium: title `Zeus Broadcast Orchestrator — Operator Console`, banner `Cluster Unreachable`, all eleven nav sections present (Dashboard, Router, Rack, Patch, Monitor, Devices, NAP, Tools, Security, Tallies, Fabric), dashboard actions present, `0` console errors |
+| Device/rack/patch API endpoints | all exercised over HTTP with the cluster down: `GET /api/v1/devices` → 7 real devices; `POST /api/v1/device/toggle` and `/device/command` mutate and persist state (200, with `lastCommand`); `POST /api/v1/rack/toggle` flips power/offline; `POST /api/v1/routing/take` + `/clear` persists crosspoints; `POST /api/v1/patch/connect` + `/disconnect` persists patches; `POST /api/v1/infrastructure/tally/route|clear|protect` persists tallies; unknown device → 404, missing args → 400 |
 
 ### Not verified
 
@@ -225,7 +226,7 @@ local kind cluster unless it is explicitly listed under **Not verified**.
 | `Degraded/FabricNotInstalled` on the running cluster | the image containing the `meta.IsNoMatchError` fix was built but the rollout could not be completed before the cluster became unreachable |
 | Webhook rejection of `redundancy: hitless` with one path | requires the running webhook; not exercised after the final rebuild |
 | `docker compose build` / `run` | Docker Desktop's Linux engine is not available on this host (`dockerDesktopLinuxEngine` pipe missing), so the compose path could not be executed |
-| UI interactions | the console renders and its API calls were exercised over HTTP, but no click-through of the router take/clear, rack, patch or tally actions was completed in a browser (refs expired, then the desktop browser disconnected) |
+| UI interactions | every router take/clear, rack toggle, device command/toggle, patch connect/disconnect, and tally route/clear/protect endpoint was exercised over HTTP with the cluster down (all returned 200/400/404 as expected); browser click-through was not completed (desktop browser disconnected) |
 | Any cluster check after 2026-11-12 | the Podman WSL VM cannot start (`Wsl/Service/CreateInstance/CreateVm/ERROR_TIMEOUT`, `podman machine start` exits 125 and the distribution stays `Stopped`), so `kind-control-plane` never comes back |
 
 The Docker/Compose files are therefore *delivered but unexecuted*: `Dockerfile`,

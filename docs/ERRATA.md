@@ -211,4 +211,21 @@ silently splitting traffic. `main()` reports `cannot listen on port 8082 …
 Another operator console may already be running.` and exits non-zero. The fix
 also surfaced a missing `import socket`, which would have crashed every bind.
 
-
+## E-024 — operator console was dead buttons and hardcoded theatre
+**Problem:** the SPA was broadcast cosplay — every rack slot, device control,
+and patch button fired a `showToast()` and did nothing; when the cluster was
+down every module fell back to hardcoded fake data, so the operator had no way
+to tell real state from set dressing. The devices endpoint 502'd whenever the
+API server was unreachable, so the Device Control panel was blank.
+**Fix:** added real, mutable local state to the standalone proxy (device
+registry, command history, rack equipment power, patch connections) backed by
+endpoints `GET /api/v1/devices`, `POST /api/v1/device/command`,
+`POST /api/v1/device/toggle`, `GET /api/v1/device/commands`,
+`POST /api/v1/rack/toggle`, `POST /api/v1/patch/connect`,
+`POST /api/v1/patch/disconnect`. All return real state and proper 400/404
+errors. The console now works offline (devices, router crosspoints, patch bay,
+tallies all function against local state) and degrades honestly when the
+cluster is down. Rewrote `index.html` into a genuine broadcast control-room
+design: real crosspoint take/clear, working rack power toggles, device command
+panels with per-device control sets, a live command history, honest cluster
+reachability, and SSE-driven live stats with polling fallback.
