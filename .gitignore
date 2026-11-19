@@ -1,6 +1,7 @@
 # Logs
 ui_proxy.log
 ui_proxy.err
+ui_proxy.out
 
 # Python
 __pycache__/

@@ -1,0 +1,27 @@
+apiVersion: core.zeus.broadcast/v1alpha1
+kind: ZeusRunbook
+metadata:
+  name: hitless-single-path-test
+  namespace: default
+spec:
+  eventClass: hitless-test
+  naps:
+    - name: probe-mixer
+      nap: probe-mixer
+  ingress:
+    contribution:
+      redundancy: hitless
+      mergeMode: hitless
+      paths:
+        - name: primary
+          transport: srt
+          priority: 1
+          srt:
+            mode: caller
+            remoteHost: 203.0.113.10
+            remotePort: 9000
+            latencyMs: 120
+            pbKeyLen: 32
+            passphraseSecretRef:
+              name: srt-mvp-pass
+              key: passphrase

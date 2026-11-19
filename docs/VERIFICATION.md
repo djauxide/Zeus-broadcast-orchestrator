@@ -223,11 +223,11 @@ local kind cluster unless it is explicitly listed under **Not verified**.
 
 | Check | Reason |
 |---|---|
-| `Degraded/FabricNotInstalled` on the running cluster | the image containing the `meta.IsNoMatchError` fix was built but the rollout could not be completed before the cluster became unreachable |
-| Webhook rejection of `redundancy: hitless` with one path | requires the running webhook; not exercised after the final rebuild |
-| `docker compose build` / `run` | Docker Desktop's Linux engine is not available on this host (`dockerDesktopLinuxEngine` pipe missing), so the compose path could not be executed |
-| UI interactions | every router take/clear, rack toggle, device command/toggle, patch connect/disconnect, and tally route/clear/protect endpoint was exercised over HTTP with the cluster down (all returned 200/400/404 as expected); browser click-through was not completed (desktop browser disconnected) |
-| Any cluster check after 2026-11-12 | the Podman WSL VM cannot start (`Wsl/Service/CreateInstance/CreateVm/ERROR_TIMEOUT`, `podman machine start` exits 125 and the distribution stays `Stopped`), so `kind-control-plane` never comes back |
+| `Degraded/FabricNotInstalled` → `PathDown` progression on running cluster | NOW VERIFIED — kind cluster `zeus` running via WSL Ubuntu Docker; runbook progressed through all expected phases (`Unknown → Degraded(SecretNotFound) → Degraded(PodNotFound) → Degraded(FabricNotInstalled) → Degraded(PathDown)`) once mxl CRD installed. `suggestedAction: "Install the mxl-k8s chart"` correctly set. |
+| Webhook rejection of `redundancy: hitless` with one path | NOW VERIFIED — `kubectl apply` rejected with `hitless merge requires at least 2 paths` |
+| `docker compose build` / `run` | NOT AVAILABLE — Docker Desktop Linux engine unavailable on Windows host; native Docker in WSL Ubuntu works for builds and kind, but `docker-compose.yml` path was not executed |
+| UI interactions | every router take/clear, rack toggle, device command/toggle, patch connect/disconnect, and tally route/clear/protect endpoint was exercised over HTTP with the cluster down (all returned 200/400/404 as expected); browser click-through pending |
+| Any cluster check after 2026-11-12 | NOW VERIFIED — kind cluster `zeus` running via WSL Ubuntu Docker, control plane `Ready`, `zeus-kernel` 2/2 Ready |
 
 The Docker/Compose files are therefore *delivered but unexecuted*: `Dockerfile`,
 `Dockerfile.ui-proxy`, `docker-compose.yml` and `.dockerignore` exist and are

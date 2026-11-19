@@ -229,3 +229,19 @@ cluster is down. Rewrote `index.html` into a genuine broadcast control-room
 design: real crosspoint take/clear, working rack power toggles, device command
 panels with per-device control sets, a live command history, honest cluster
 reachability, and SSE-driven live stats with polling fallback.
+
+## E-025 — Windows WSL VM blocked; migrated build/test to WSL Ubuntu
+**Problem:** the `podman-machine-default` WSL distro could not start
+(`Wsl/Service/CreateInstance/CreateVm/ERROR_TIMEOUT`, `podman machine start`
+exits 125, distro stays `Stopped`). `LxssManager` was Stopped and no
+Administrator rights were available to restart it. Docker Desktop's Linux
+engine was also unavailable (`dockerDesktopLinuxEngine` pipe missing).
+**Fix:** installed a standalone Ubuntu 26.04 WSL distro (`wsl --install
+Ubuntu`), set it as default, and installed Go 1.26, Python 3, Podman, Docker
+Engine, Helm, kubectl, and kind inside it. The Go controller (blocked on
+Windows by E-006), container images, kind cluster, and full Helm deployment
+now build and run natively inside WSL Ubuntu. The kind cluster `zeus` is
+`Ready`, `zeus-kernel` is `2/2 Ready`, and end-to-end runbook reconciliation
+was verified live (NAP `Validated` → runbook `FabricNotInstalled` → `PathDown`
+once mxl CRD installed). Windows host remains the code editor; build/test
+happens inside WSL Ubuntu.
